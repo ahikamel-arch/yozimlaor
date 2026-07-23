@@ -140,7 +140,8 @@
     if(!$("fType").dataset.filled){ TYPES.forEach(t=>$("fType").insertAdjacentHTML("beforeend",'<option>'+esc(t)+'</option>')); $("fType").dataset.filled=1; }
   }
 
-  let canManageActivities = false; // מנהל/ת או רכז/ת קבוצות - הגישה היחידה הרלוונטית כאן
+  let canManageActivities = false; // מנהל/ת או רכז/ת קבוצות - גישה מלאה לכל הפעילויות
+  let facilitatorOnly = false;     // מנחה עם חשבון - גישה רק לפעילות/יות שהוא/היא מנחה בהן
 
   async function showApp(){
     const user = await YL.getUser();
@@ -151,6 +152,16 @@
     canManageActivities = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת קבוצות");
 
     if(!canManageActivities){
+      try{
+        const mine = await api("/persons?community_auth_user_id=eq."+user.id+"&select=id");
+        if(mine && mine.length){
+          const facRows = await api("/activity_members?person_id=eq."+mine[0].id+"&is_facilitator=eq.true&select=activity_id&limit=1");
+          facilitatorOnly = !!(facRows && facRows.length);
+        }
+      }catch(e){ facilitatorOnly=false; }
+    }
+
+    if(!canManageActivities && !facilitatorOnly){
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
@@ -158,6 +169,10 @@
     $("viewLock").classList.add("hidden");
     $("viewNoAccess").classList.add("hidden");
     $("viewMain").classList.remove("hidden");
+    if(!canManageActivities){
+      $("newActivityBtn").classList.add("hidden");
+      $("fSearch").closest(".filters").classList.add("hidden"); // מנחה עם פעילות אחת - אין טעם בפילטרים
+    }
     document.querySelectorAll(".who1").forEach(el=>el.textContent=YL.whoami()||"");
     showApp_init();
     loadActivities();
