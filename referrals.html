@@ -94,6 +94,7 @@
       <b><span id="bulkCount"></span> נבחרו</b>
       <button class="btn-line" id="bulkAddExistingBtn" style="width:auto;padding:8px 16px;font-size:14px">+ הוספה לקבוצה קיימת</button>
       <button class="btn-line" id="bulkNewGroupBtn" style="width:auto;padding:8px 16px;font-size:14px">+ יצירת קבוצה חדשה מהנבחרים</button>
+      <button class="del" id="bulkDeleteBtn">🗑 מחיקת הנבחרים</button>
       <button class="btn-ghost" id="bulkClearBtn" style="font-size:13px">ביטול בחירה</button>
     </div>
     <div class="card hidden" id="bulkExistingCard" style="margin-bottom:16px">
@@ -341,6 +342,15 @@
     if(selected.size===0){ $("bulkExistingCard").classList.add("hidden"); $("bulkNewCard").classList.add("hidden"); }
   }
   $("bulkClearBtn").onclick=()=>{ selected.clear(); updateBulkBar(); renderDash(); };
+  $("bulkDeleteBtn").onclick=async ()=>{
+    if(!confirm("למחוק לצמיתות את "+selected.size+" הפניות הנבחרות? (רשומת ה-Person עצמה תישאר, רק הפנייה תימחק)")) return;
+    try{
+      const ids=Array.from(selected.keys());
+      await api("/referrals?id=in.("+ids.join(",")+")",{method:"DELETE"});
+      selected.clear(); updateBulkBar();
+      loadDash();
+    }catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,200)); }
+  };
 
   $("bulkAddExistingBtn").onclick=async ()=>{
     $("bulkNewCard").classList.add("hidden");
@@ -472,11 +482,40 @@
           (cs==="לא קהילה" ?
             '<button type="button" class="btn-line" data-invite="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px;margin-top:8px">👥 הזמנה לרשת הקהילתית</button>'
             : '<button type="button" class="del" data-revoke="'+(p.id||"")+'" style="margin-top:8px">↺ ביטול/איפוס גישה לקהילה (לצורך הזמנה חוזרת)</button>')+
+          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
+            '<button type="button" class="del" data-delete-referral="'+r.id+'">🗑 מחיקת הפנייה הזו</button>'+
+            '<button type="button" class="del" data-delete-person="'+(p.id||"")+'">🗑 מחיקת האדם הזה לגמרי (כולל חשבון קהילה אם קיים)</button>'+
+          '</div>'+
         '</td></tr>';
       }
     });
     html+="</tbody></table></div>";
     area.innerHTML=html;
+
+    area.querySelectorAll("[data-delete-person]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("למחוק את האדם הזה לגמרי מהמערכת - כולל כל הפניות, תפקידים, וחשבון קהילה אם קיים? פעולה בלתי הפיכה.")) return;
+        btn.disabled=true; btn.textContent="מוחק…";
+        try{
+          await YL.callFunction("delete-person-fully",{person_id:btn.dataset.deletePerson});
+          alert("נמחק בהצלחה");
+          loadDash();
+        }catch(e){
+          alert("המחיקה נכשלה: "+e.message.slice(0,250));
+          btn.disabled=false; btn.textContent="🗑 מחיקת האדם הזה לגמרי (כולל חשבון קהילה אם קיים)";
+        }
+      };
+    });
+
+    area.querySelectorAll("[data-delete-referral]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("למחוק לצמיתות את הפנייה הזו?")) return;
+        try{ await api("/referrals?id=eq."+btn.dataset.deleteReferral,{method:"DELETE"}); loadDash(); }
+        catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,200)); }
+      };
+    });
 
     area.querySelectorAll("[data-revoke]").forEach(btn=>{
       btn.onclick=async (e)=>{
