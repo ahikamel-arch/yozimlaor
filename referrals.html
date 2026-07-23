@@ -381,6 +381,8 @@
   // ═══ דשבורד כל הפניות ═══
   let referrals=[];
   let expanded=null;
+  let editingId=null;
+  let editRegionsSet=new Set();
   let selected=new Map(); // referral row id -> person id
 
   function updateBulkBar(){
@@ -549,12 +551,52 @@
       if(expanded===r.id){
         const cs = p.community_status || "לא קהילה";
         const csColor = cs==="פעיל/ה" ? "#E0F0E3;color:#256B33" : cs==="הוזמן/ה" ? "#FBF3E2;color:#8A6316" : "#EEEEEE;color:#777";
-        html += '<tr class="detail-row"><td colspan="8">'+
-          (p.email?'<p><b>מייל:</b> '+esc(p.email)+'</p>':"")+
-          (r.city?'<p><b>עיר:</b> '+esc(r.city)+'</p>':"")+
-          (r.age?'<p><b>גיל:</b> '+esc(r.age)+'</p>':"")+
-          (r.sector?'<p><b>מגזר:</b> '+esc(r.sector)+'</p>':"")+
-          (r.notes?'<p><b>הערות:</b> '+esc(r.notes)+'</p>':"")+
+        const isEditing = editingId===r.id;
+        html += '<tr class="detail-row"><td colspan="8">';
+
+        if(isEditing){
+          const rgns = new Set(r.regions||[]);
+          html +=
+            '<div class="row2">'+
+              '<div class="field"><label>שם פרטי</label><input data-e="first_name" value="'+esc(p.first_name||"")+'"></div>'+
+              '<div class="field"><label>שם משפחה</label><input data-e="last_name" value="'+esc(p.last_name||"")+'"></div>'+
+            '</div>'+
+            '<div class="row2">'+
+              '<div class="field"><label>טלפון</label><input data-e="phone" value="'+esc(p.phone||"")+'" dir="ltr"></div>'+
+              '<div class="field"><label>מייל</label><input data-e="email" value="'+esc(p.email||"")+'" dir="ltr"></div>'+
+            '</div>'+
+            '<div class="row2">'+
+              '<div class="field"><label>קבוצה מבוקשת</label><select data-e="group_type_requested">'+
+                '<option value="">—</option>'+GROUPS.map(g=>'<option'+(r.group_type_requested===g?' selected':'')+'>'+g+'</option>').join('')+
+              '</select></div>'+
+              '<div class="field"><label>מגזר</label><select data-e="sector">'+
+                '<option value="">—</option>'+SECTORS.map(s=>'<option'+(r.sector===s?' selected':'')+'>'+s+'</option>').join('')+
+              '</select></div>'+
+            '</div>'+
+            '<div class="field"><label><input type="checkbox" data-e="mixed_ok" style="width:auto" '+(r.mixed_ok?'checked':'')+'> מתאימה גם קבוצה מעורבת</label></div>'+
+            '<div class="field"><label>אזורים</label><div class="pills" data-e-regions>'+
+              REGIONS.map(rg=>'<button type="button" class="pill'+(rgns.has(rg)?' on':'')+'" data-region-pill="'+esc(rg)+'">'+esc(rg)+'</button>').join('')+
+            '</div></div>'+
+            '<div class="row2">'+
+              '<div class="field"><label>עיר</label><input data-e="city" value="'+esc(r.city||"")+'"></div>'+
+              '<div class="field"><label>גיל</label><input data-e="age" value="'+esc(r.age||"")+'" inputmode="numeric"></div>'+
+            '</div>'+
+            '<div class="field"><label>הערות</label><textarea data-e="notes" rows="3">'+esc(r.notes||"")+'</textarea></div>'+
+            '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+              '<button type="button" class="btn-line" data-save-edit="'+r.id+'" style="width:auto;padding:8px 20px">💾 שמירה</button>'+
+              '<button type="button" class="btn-ghost" data-cancel-edit>ביטול</button>'+
+            '</div>';
+        } else {
+          html +=
+            (p.email?'<p><b>מייל:</b> '+esc(p.email)+'</p>':"")+
+            (r.city?'<p><b>עיר:</b> '+esc(r.city)+'</p>':"")+
+            (r.age?'<p><b>גיל:</b> '+esc(r.age)+'</p>':"")+
+            (r.sector?'<p><b>מגזר:</b> '+esc(r.sector)+'</p>':"")+
+            (r.notes?'<p><b>הערות:</b> '+esc(r.notes)+'</p>':"")+
+            '<button type="button" class="btn-ghost" data-edit-row="'+r.id+'" style="margin-top:8px">✏ עריכת פרטים</button>';
+        }
+
+        html +=
           '<p style="margin-top:10px"><b>רשת קהילתית:</b> <span class="badge" style="background:'+csColor+'">'+esc(cs)+'</span></p>'+
           (cs==="לא קהילה" ?
             '<button type="button" class="btn-line" data-invite="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px;margin-top:8px">👥 הזמנה לרשת הקהילתית</button>'
@@ -578,6 +620,60 @@
     });
     html+="</tbody></table></div>";
     area.innerHTML=html;
+    area.querySelectorAll("[data-edit-row]").forEach(btn=>{
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        editingId=btn.dataset.editRow;
+        const r=referrals.find(x=>x.id===editingId);
+        editRegionsSet=new Set(r?r.regions||[]:[]);
+        renderDash();
+      };
+    });
+    area.querySelectorAll("[data-cancel-edit]").forEach(btn=>{
+      btn.onclick=(e)=>{ e.stopPropagation(); editingId=null; renderDash(); };
+    });
+    area.querySelectorAll("[data-region-pill]").forEach(btn=>{
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        const rg=btn.dataset.regionPill;
+        if(editRegionsSet.has(rg)) editRegionsSet.delete(rg); else editRegionsSet.add(rg);
+        btn.classList.toggle("on");
+      };
+    });
+    area.querySelectorAll("[data-save-edit]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const rid=btn.dataset.saveEdit;
+        const r=referrals.find(x=>x.id===rid);
+        const p=r.persons||{};
+        const wrap=btn.closest("td");
+        const val=(name)=>wrap.querySelector('[data-e="'+name+'"]').value.trim();
+        const checked=(name)=>wrap.querySelector('[data-e="'+name+'"]').checked;
+        btn.disabled=true; btn.textContent="שומר…";
+        try{
+          if(p.id){
+            await api("/persons?id=eq."+p.id,{method:"PATCH",body:JSON.stringify({
+              first_name: val("first_name")||"ללא שם",
+              last_name: val("last_name")||null,
+              phone: val("phone")||null,
+              email: val("email")||null
+            })});
+          }
+          await api("/referrals?id=eq."+rid,{method:"PATCH",body:JSON.stringify({
+            group_type_requested: wrap.querySelector('[data-e="group_type_requested"]').value||null,
+            sector: wrap.querySelector('[data-e="sector"]').value||null,
+            mixed_ok: checked("mixed_ok"),
+            regions: Array.from(editRegionsSet),
+            city: val("city")||null,
+            age: val("age")?parseInt(val("age"),10):null,
+            notes: val("notes")||null
+          })});
+          editingId=null;
+          loadDash();
+        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); btn.disabled=false; btn.textContent="💾 שמירה"; }
+      };
+    });
+
     area.querySelectorAll("[data-roles-area]").forEach(el=>loadPersonRoles(el));
     area.querySelectorAll("[data-grant-role]").forEach(btn=>{
       btn.onclick=async (e)=>{
