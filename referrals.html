@@ -46,6 +46,25 @@
     </div>
   </section>
 
+  <!-- ══ קביעת סיסמה ראשונית (מגיעים מקישור הזמנה) ══ -->
+  <section id="viewSetPass" class="hidden">
+    <div class="card tiny">
+      <div class="lock-icon">👋</div>
+      <h2 style="font-size:20px;margin-bottom:4px">ברוך/ה הבא/ה לצוות</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">קודם כל, נקבע סיסמה אישית לכניסות הבאות</p>
+      <div class="field" style="text-align:right">
+        <label>סיסמה חדשה</label>
+        <input type="password" id="spPass1">
+      </div>
+      <div class="field" style="text-align:right">
+        <label>אימות סיסמה</label>
+        <input type="password" id="spPass2">
+      </div>
+      <p class="errmsg" id="spErr" style="display:none;margin-bottom:8px"></p>
+      <button class="btn" id="spBtn">שמירת סיסמה והמשך</button>
+    </div>
+  </section>
+
   <!-- ══ אין הרשאה ══ -->
   <section id="viewNoAccess" class="hidden">
     <div class="card tiny">
@@ -146,6 +165,7 @@
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
     const allowed = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת פניות");
+    $("viewSetPass").classList.add("hidden");
     if(!allowed){
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
@@ -178,6 +198,33 @@
     }catch(e){ $("loginErr").style.display="block"; }
     this.disabled=false;
   };
+
+  $("spBtn").onclick=async function(){
+    const p1=$("spPass1").value, p2=$("spPass2").value;
+    const err=$("spErr"); err.style.display="none";
+    if(!p1 || p1.length<6){ err.textContent="הסיסמה חייבת להיות באורך 6 תווים לפחות"; err.style.display="block"; return; }
+    if(p1!==p2){ err.textContent="הסיסמאות לא תואמות"; err.style.display="block"; return; }
+    this.disabled=true;
+    try{
+      await YL.setPassword(p1);
+      await showApp();
+    }catch(e){ err.textContent="שמירת הסיסמה נכשלה: "+e.message.slice(0,150); err.style.display="block"; }
+    this.disabled=false;
+  };
+
+  // בדיקה בטעינה - האם הגענו מקישור הזמנה (טוקנים ב-hash)
+  (async function checkInviteRedirect(){
+    const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+    if(!hash) return;
+    const hp = new URLSearchParams(hash);
+    const at = hp.get("access_token"), rt = hp.get("refresh_token");
+    if(at && rt){
+      history.replaceState(null, "", location.pathname + location.search);
+      await YL.setSessionFromTokens(at, rt);
+      $("viewLock").classList.add("hidden");
+      $("viewSetPass").classList.remove("hidden");
+    }
+  })();
 
   // ═══ תור מיון ═══
   let queue=[];
@@ -414,7 +461,7 @@
     populateFilterChrome();
     $("listArea").innerHTML='<p class="loading">טוען…</p>';
     try{
-      referrals=await api("/referrals?select=*,persons(id,first_name,last_name,phone,email,region_hint,community_status)&order=created_at.desc");
+      referrals=await api("/referrals?select=*,persons(id,first_name,last_name,phone,email,region_hint,community_status,community_auth_user_id)&order=created_at.desc");
       renderDash();
     }catch(e){
       $("listArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
@@ -437,6 +484,36 @@
       if(status && r.status!==status) return false;
       return true;
     });
+  }
+
+  async function loadPersonRoles(el){
+    const authId = el.dataset.authId;
+    if(!authId){
+      el.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין חשבון התחברות - יווצר אוטומטית בהענקת התפקיד הראשון.</p>';
+      return;
+    }
+    try{
+      const rows = await api("/staff_roles?auth_user_id=eq."+authId+"&select=id,role");
+      if(!rows.length){
+        el.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">יש חשבון התחברות, אבל אין עדיין תפקידי צוות.</p>';
+        return;
+      }
+      el.innerHTML = rows.map(r=>
+        '<span class="badge" style="background:var(--primary-soft);color:var(--primary);margin-left:6px;margin-bottom:4px;display:inline-block">'+
+          esc(r.role)+' <button type="button" data-remove-role="'+r.id+'" style="border:none;background:none;color:var(--primary);cursor:pointer;margin-right:4px">✕</button>'+
+        '</span>'
+      ).join('');
+      el.querySelectorAll('[data-remove-role]').forEach(b=>{
+        b.onclick=async (e)=>{
+          e.stopPropagation();
+          if(!confirm('להסיר את התפקיד הזה?')) return;
+          try{ await api("/staff_roles?id=eq."+b.dataset.removeRole,{method:"DELETE"}); loadPersonRoles(el); }
+          catch(e){ alert("ההסרה נכשלה: "+e.message.slice(0,150)); }
+        };
+      });
+    }catch(e){
+      el.innerHTML = '<p style="font-size:13px;color:var(--err)">טעינת התפקידים נכשלה</p>';
+    }
   }
 
   function renderDash(){
@@ -482,6 +559,16 @@
           (cs==="לא קהילה" ?
             '<button type="button" class="btn-line" data-invite="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px;margin-top:8px">👥 הזמנה לרשת הקהילתית</button>'
             : '<button type="button" class="del" data-revoke="'+(p.id||"")+'" style="margin-top:8px">↺ ביטול/איפוס גישה לקהילה (לצורך הזמנה חוזרת)</button>')+
+          '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line)">'+
+            '<p style="margin-bottom:8px"><b>צוות והרשאות</b></p>'+
+            '<div data-roles-area="'+(p.id||"")+'" data-auth-id="'+(p.community_auth_user_id||"")+'"><p style="font-size:13px;color:var(--ink-soft)">טוען…</p></div>'+
+            '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">'+
+              '<select data-role-select="'+(p.id||"")+'" style="width:auto;padding:8px 12px">'+
+                '<option>מנהל/ת מערכת</option><option selected>רכז/ת פניות</option><option>רכז/ת קבוצות</option><option>רכז/ת תוכן</option>'+
+              '</select>'+
+              '<button type="button" class="btn-line" data-grant-role="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px">➕ הענקת תפקיד</button>'+
+            '</div>'+
+          '</div>'+
           '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
             '<button type="button" class="del" data-delete-referral="'+r.id+'">🗑 מחיקת הפנייה הזו</button>'+
             '<button type="button" class="del" data-delete-person="'+(p.id||"")+'">🗑 מחיקת האדם הזה לגמרי (כולל חשבון קהילה אם קיים)</button>'+
@@ -491,6 +578,24 @@
     });
     html+="</tbody></table></div>";
     area.innerHTML=html;
+    area.querySelectorAll("[data-roles-area]").forEach(el=>loadPersonRoles(el));
+    area.querySelectorAll("[data-grant-role]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const personId=btn.dataset.grantRole;
+        const role=area.querySelector('[data-role-select="'+personId+'"]').value;
+        if(!confirm('להעניק ל-"'+role+'" הרשאה? אם אין עדיין חשבון התחברות, יישלח מייל הזמנה.')) return;
+        btn.disabled=true; btn.textContent="מעניק…";
+        try{
+          await YL.callFunction("grant-staff-role",{person_id:personId, role:role});
+          alert("התפקיד הוענק בהצלחה");
+          loadDash();
+        }catch(e){
+          alert("ההענקה נכשלה: "+e.message.slice(0,250));
+          btn.disabled=false; btn.textContent="➕ הענקת תפקיד";
+        }
+      };
+    });
 
     area.querySelectorAll("[data-delete-person]").forEach(btn=>{
       btn.onclick=async (e)=>{
