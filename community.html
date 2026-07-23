@@ -1272,6 +1272,25 @@
   </div>
 </div>
 
+<!-- SET PASSWORD SCREEN - מגיעים לכאן מקישור הזמנה, לא ידנית -->
+<div id="screen-setpass" class="screen">
+  <div style="max-width:340px;margin:auto;padding:32px 24px;width:100%">
+    <div class="setup-hero-logo" style="text-align:center;margin-bottom:24px">יוצ<em>א</em>ים לאור</div>
+    <h2 style="text-align:center;margin-bottom:8px">ברוך/ה הבא/ה לקהילה</h2>
+    <p style="text-align:center;color:var(--mid);font-size:13px;margin-bottom:24px">קודם כל, נקבע סיסמה אישית לכניסות הבאות</p>
+    <div class="form-group">
+      <label class="form-label">סיסמה חדשה</label>
+      <input class="form-input" id="sp-pass1" type="password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">אימות סיסמה</label>
+      <input class="form-input" id="sp-pass2" type="password" autocomplete="new-password">
+    </div>
+    <p id="sp-err" style="display:none;color:#B8664A;font-size:13px;margin-bottom:12px"></p>
+    <button class="btn-setup-submit" id="sp-btn" onclick="submitSetPassword()">שמירת סיסמה והמשך</button>
+  </div>
+</div>
+
 <!-- SETUP SCREEN -->
 <div id="screen-setup" class="screen">
   <div class="setup-hero">
@@ -1944,35 +1963,70 @@ function showCommunityLogin(){
   document.getElementById('screen-login').classList.add('active');
 }
 
+async function afterCommunityAuth(){
+  const user = await YL.getUser();
+  const rows = await YL.api("/persons?community_auth_user_id=eq."+user.id+"&select=*");
+  if(!rows || !rows.length) throw new Error("החשבון הזה לא מקושר לקהילה - יש לפנות לעמותה");
+  myPersonRow = rows[0];
+  myPersonId = myPersonRow.id;
+  if(myPersonRow.community_status !== 'פעיל/ה'){
+    await YL.api("/persons?id=eq."+myPersonId,{method:"PATCH",body:JSON.stringify({community_status:'פעיל/ה'})});
+  }
+  document.querySelectorAll('.screen.active').forEach(s=>s.classList.remove('active'));
+  if(!myPersonRow.display_name){
+    document.getElementById('screen-setup').classList.add('active');
+  }else{
+    userProfile.firstName = myPersonRow.display_name;
+    document.getElementById('screen-app').classList.add('active');
+    updateProfileDisplay();
+    updateComposeAvatars();
+    await loadFeed();
+  }
+}
+
 async function communityLogin(){
   document.getElementById('cl-err').style.display='none';
   const btn=document.getElementById('cl-btn'); btn.disabled=true;
   try{
     await YL.login(document.getElementById('cl-email').value.trim(), document.getElementById('cl-pass').value);
-    const user = await YL.getUser();
-    const rows = await YL.api("/persons?community_auth_user_id=eq."+user.id+"&select=*");
-    if(!rows || !rows.length) throw new Error("החשבון הזה לא מקושר לקהילה - יש לפנות לעמותה");
-    myPersonRow = rows[0];
-    myPersonId = myPersonRow.id;
-    if(myPersonRow.community_status !== 'פעיל/ה'){
-      await YL.api("/persons?id=eq."+myPersonId,{method:"PATCH",body:JSON.stringify({community_status:'פעיל/ה'})});
-    }
-    document.getElementById('screen-login').classList.remove('active');
-    if(!myPersonRow.display_name){
-      document.getElementById('screen-setup').classList.add('active');
-    }else{
-      userProfile.firstName = myPersonRow.display_name;
-      document.getElementById('screen-app').classList.add('active');
-      updateProfileDisplay();
-      updateComposeAvatars();
-      await loadFeed();
-    }
+    await afterCommunityAuth();
   }catch(e){
     document.getElementById('cl-err').textContent = e.message.slice(0,150);
     document.getElementById('cl-err').style.display='block';
   }
   btn.disabled=false;
 }
+
+async function submitSetPassword(){
+  const p1=document.getElementById('sp-pass1').value, p2=document.getElementById('sp-pass2').value;
+  const errEl=document.getElementById('sp-err'); errEl.style.display='none';
+  if(!p1 || p1.length<6){ errEl.textContent='הסיסמה חייבת להיות באורך 6 תווים לפחות'; errEl.style.display='block'; return; }
+  if(p1!==p2){ errEl.textContent='הסיסמאות לא תואמות'; errEl.style.display='block'; return; }
+  const btn=document.getElementById('sp-btn'); btn.disabled=true;
+  try{
+    await YL.setPassword(p1);
+    document.querySelectorAll('.screen.active').forEach(s=>s.classList.remove('active'));
+    await afterCommunityAuth();
+  }catch(e){
+    errEl.textContent='שמירת הסיסמה נכשלה: '+e.message.slice(0,150);
+    errEl.style.display='block';
+  }
+  btn.disabled=false;
+}
+
+// בדיקה בטעינת הדף - האם הגענו מקישור הזמנה/איפוס (טוקנים ב-hash של ה-URL)
+(async function checkInviteRedirect(){
+  const hash = location.hash.startsWith('#') ? location.hash.slice(1) : '';
+  if(!hash) return;
+  const hp = new URLSearchParams(hash);
+  const at = hp.get('access_token'), rt = hp.get('refresh_token');
+  if(at && rt){
+    history.replaceState(null, '', location.pathname + location.search); // מנקים את הטוקנים מה-URL הגלוי
+    await YL.setSessionFromTokens(at, rt);
+    document.querySelectorAll('.screen.active').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-setpass').classList.add('active');
+  }
+})();
 
 function timeAgo(iso){
   const diff = Date.now()-new Date(iso).getTime();
