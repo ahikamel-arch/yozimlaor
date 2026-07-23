@@ -51,6 +51,26 @@ const YL = (function(){
   }
   function logout(){saveSession(null)}
 
+  // לשימוש כשמגיעים מקישור הזמנה/איפוס - יש כבר access_token+refresh_token מה-URL,
+  // בלי מייל+סיסמה. שולפים את המייל בעצמנו מהטוקן.
+  async function setSessionFromTokens(access_token, refresh_token){
+    saveSession({access_token, refresh_token, email:null});
+    try{
+      const res=await fetch(SUPABASE_URL+"/auth/v1/user",{headers:{apikey:SUPABASE_KEY,"Authorization":"Bearer "+access_token}});
+      if(res.ok){ const u=await res.json(); saveSession({access_token, refresh_token, email:u.email}); }
+    }catch(e){}
+  }
+
+  async function setPassword(newPassword){
+    const res=await fetch(SUPABASE_URL+"/auth/v1/user",{
+      method:"PUT",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json","Authorization":"Bearer "+session.access_token},
+      body:JSON.stringify({password:newPassword})
+    });
+    if(!res.ok){ const t=await res.text(); throw new Error(t.slice(0,200)); }
+    return res.json();
+  }
+
   // ═══ קריאות ל-PostgREST (טבלאות סופאבייס) ═══
   async function api(path,opts,_retried){
     opts=opts||{};
@@ -178,6 +198,7 @@ const YL = (function(){
   return {
     $, esc, fmtDate, fmtTime, fmtDT,
     isLoggedIn, whoami, login, logout, refreshSession, getUser,
+    setSessionFromTokens, setPassword,
     api, personPicker, renderModuleNav, callFunction, SUPABASE_URL, SUPABASE_KEY
   };
 })();
