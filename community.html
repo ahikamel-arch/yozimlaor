@@ -1977,6 +1977,7 @@ async function afterCommunityAuth(){
     document.getElementById('screen-setup').classList.add('active');
   }else{
     userProfile.firstName = myPersonRow.display_name;
+    CURRENT_STEP = myPersonRow.current_step || 4;
     document.getElementById('screen-app').classList.add('active');
     updateProfileDisplay();
     updateComposeAvatars();
@@ -2282,9 +2283,23 @@ function applyGenderText() {
 }
 
 // ============ JOURNAL ============
-const journalEntries = []; // { id, date, stepIndex, text }
+const journalEntries = []; // מטמון מקומי, נטען מהשרת ב-loadJournal()
 let journalEditId = null;
 let journalViewId = null;
+
+async function loadJournal(){
+  try{
+    const rows = await YL.api("/journal_entries?person_id=eq."+myPersonId+"&order=created_at.desc");
+    journalEntries.length = 0;
+    rows.forEach(r=>journalEntries.push({
+      id: r.id,
+      date: new Date(r.created_at),
+      stepIndex: r.step_number ? r.step_number-1 : undefined,
+      text: r.content
+    }));
+    renderJournalEntries();
+  }catch(e){ console.error('loadJournal failed', e); }
+}
 
 function openJournalCompose(editId = null) {
   journalEditId = editId;
@@ -2319,21 +2334,23 @@ function closeJournalCompose() {
   journalEditId = null;
 }
 
-function saveJournalEntry(andShare = false) {
+async function saveJournalEntry(andShare = false) {
   const text = document.getElementById('journal-textarea').value.trim();
   if (!text) { document.getElementById('journal-textarea').focus(); return; }
   const stepVal = document.getElementById('journal-step-sel').value;
   const stepIndex = stepVal !== '' ? parseInt(stepVal) : undefined;
+  const stepNumber = stepIndex !== undefined ? stepIndex+1 : null;
 
-  if (journalEditId !== null) {
-    const entry = journalEntries.find(e => e.id === journalEditId);
-    if (entry) { entry.text = text; entry.stepIndex = stepIndex; }
-  } else {
-    journalEntries.unshift({ id: Date.now(), date: new Date(), stepIndex, text });
-  }
-  closeJournalCompose();
-  renderJournalEntries();
-  if (andShare) shareTextToFeed(text, stepIndex);
+  try{
+    if (journalEditId !== null) {
+      await YL.api("/journal_entries?id=eq."+journalEditId, {method:"PATCH", body: JSON.stringify({content:text, step_number:stepNumber, updated_at:new Date().toISOString()})});
+    } else {
+      await YL.api("/journal_entries", {method:"POST", body: JSON.stringify({person_id:myPersonId, content:text, step_number:stepNumber})});
+    }
+    closeJournalCompose();
+    await loadJournal();
+    if (andShare) shareTextToFeed(text, stepIndex);
+  }catch(e){ alert('השמירה נכשלה: '+e.message.slice(0,150)); }
 }
 
 function shareJournalToFeed() {
@@ -2377,11 +2394,12 @@ function renderJournalEntries() {
         <span class="journal-entry-date">${dateStr}</span>
         <div style="display:flex;gap:6px;align-items:center">
           ${stepLabel ? `<span class="journal-entry-step">${stepLabel}</span>` : ''}
-          <button class="journal-entry-del" onclick="shareEntryToFeed(event,${entry.id})" title="שיתוף בפיד" style="opacity:0.6;color:var(--sage-dark)">📤</button>
-          <button class="journal-entry-del" onclick="deleteJournalEntry(event,${entry.id})">🗑</button>
+          <button class="journal-entry-del" onclick="shareEntryToFeed(event,'${entry.id}')" title="שיתוף בפיד" style="opacity:0.6;color:var(--sage-dark)">📤</button>
+          <button class="journal-entry-del" onclick="deleteJournalEntry(event,'${entry.id}')">🗑</button>
         </div>
       </div>
-      <div class="journal-entry-preview">${entry.text}</div>`;
+      <div class="journal-entry-preview"></div>`;
+    card.querySelector('.journal-entry-preview').textContent = entry.text;
     card.onclick = (e) => { if (!e.target.classList.contains('journal-entry-del')) openJournalView(entry.id); };
     list.insertBefore(card, list.firstChild);
   });
@@ -2393,11 +2411,15 @@ function shareEntryToFeed(e, id) {
   if (entry) shareTextToFeed(entry.text, entry.stepIndex);
 }
 
-function deleteJournalEntry(e, id) {
+async function deleteJournalEntry(e, id) {
   e.stopPropagation();
-  const idx = journalEntries.findIndex(e => e.id === id);
-  if (idx !== -1) journalEntries.splice(idx, 1);
-  renderJournalEntries();
+  if(!confirm('למחוק את הרשומה הזו מהיומן?')) return;
+  try{
+    await YL.api("/journal_entries?id=eq."+id, {method:"DELETE"});
+    const idx = journalEntries.findIndex(en => en.id === id);
+    if (idx !== -1) journalEntries.splice(idx, 1);
+    renderJournalEntries();
+  }catch(e){ alert('המחיקה נכשלה: '+e.message.slice(0,150)); }
 }
 
 function openJournalView(id) {
@@ -2539,10 +2561,14 @@ function showStepCompleteConfirm(stepNum) {
   document.body.appendChild(overlay);
 }
 
-function confirmStepAdvance() {
+async function confirmStepAdvance() {
   document.getElementById('step-confirm-overlay')?.remove();
   if (CURRENT_STEP >= 12) { showToast('🌟 סיימת את כל 12 הצעדים! מדהים!'); return; }
   CURRENT_STEP++;
+  if (myPersonId) {
+    try{ await YL.api("/persons?id=eq."+myPersonId, {method:"PATCH", body: JSON.stringify({current_step: CURRENT_STEP})}); }
+    catch(e){ console.error('saving current_step failed', e); }
+  }
   // Update profile stat
   const statEl = document.getElementById('stat-current-step');
   if (statEl) statEl.textContent = CURRENT_STEP;
@@ -3224,6 +3250,7 @@ function switchTab(tab) {
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'journal') loadJournal();
 }
 
 function toggleLike(btn) {
