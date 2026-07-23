@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יוצאים לאור – פניות</title>
+<link rel="stylesheet" href="shared/core.css">
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <div class="head-inner">
+    <div class="head-top">
+      <div>
+        <h1>יוצאים <span>לאור</span></h1>
+        <p class="sub">ניהול פניות</p>
+      </div>
+    </div>
+    <nav id="moduleNav" class="hidden"></nav>
+    <nav id="mainNav" class="hidden">
+      <button id="tabQueue" class="active">תור מיון <span id="queueCount"></span></button>
+      <button id="tabDash">כל הפניות</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ══ כניסה ══ -->
+  <section id="viewLock">
+    <div class="card tiny">
+      <div class="lock-icon">🔒</div>
+      <h2 style="font-size:20px;margin-bottom:4px">כניסת צוות</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">אזור זה מיועד לצוות ולמתנדבי הרכזות בלבד.</p>
+      <div class="field" style="text-align:right">
+        <label>מייל</label>
+        <input id="loginEmail" inputmode="email" dir="ltr" placeholder="you@example.com">
+      </div>
+      <div class="field" style="text-align:right">
+        <label>סיסמה</label>
+        <input type="password" id="loginPass">
+      </div>
+      <p class="errmsg" id="loginErr" style="display:none;margin-bottom:8px">ההתחברות נכשלה - בדקו מייל וסיסמה.</p>
+      <button class="btn" id="loginBtn">כניסה</button>
+    </div>
+  </section>
+
+  <!-- ══ אין הרשאה ══ -->
+  <section id="viewNoAccess" class="hidden">
+    <div class="card tiny">
+      <div class="lock-icon">🚫</div>
+      <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למודול זה</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">המשתמש שלך מחובר, אבל לא שויך לתפקיד שנותן גישה לפניות. פנה/י למנהל/ת המערכת כדי לקבל הרשאה.</p>
+      <button class="btn-ghost" id="logoutBtn0">התנתקות</button>
+    </div>
+  </section>
+
+  <!-- ══ תור מיון ══ -->
+  <section id="viewQueue" class="hidden">
+    <div class="dash-head">
+      <div>
+        <h2 style="font-size:20px">תור מיון</h2>
+        <p style="font-size:14px;color:var(--ink-soft)">פניות שהגיעו מהטופס הציבורי, וגם פניות היסטוריות שיובאו. יש להשלים פרטים לפני אישור.</p>
+      </div>
+      <div class="dash-actions">
+        <button class="btn-ghost" id="refreshQueueBtn">↻ רענון</button>
+        <button class="btn-ghost" id="logoutBtn1">התנתקות (<span class="who1"></span>)</button>
+      </div>
+    </div>
+    <div id="queueArea"><p class="loading">טוען…</p></div>
+  </section>
+
+  <!-- ══ דשבורד פניות ══ -->
+  <section id="viewDash" class="hidden">
+    <div class="dash-head">
+      <div>
+        <h2 style="font-size:20px">כל הפניות</h2>
+        <p style="font-size:14px;color:var(--ink-soft)"><span id="counter"></span></p>
+      </div>
+      <div class="dash-actions">
+        <button class="btn-ghost" id="refreshDashBtn">↻ רענון</button>
+        <button class="btn-line" id="exportBtn">⬇ ייצוא לאקסל (CSV)</button>
+        <button class="btn-ghost" id="logoutBtn2">התנתקות (<span class="who2"></span>)</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input id="fSearch" placeholder="חיפוש שם / טלפון…">
+      <select id="fRegion"><option value="">כל האזורים</option></select>
+      <select id="fGroup"><option value="">כל הקבוצות</option></select>
+      <select id="fStatus"><option value="">כל הסטטוסים</option></select>
+    </div>
+    <div class="card hidden" id="bulkBar" style="margin-bottom:16px;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <b><span id="bulkCount"></span> נבחרו</b>
+      <button class="btn-line" id="bulkAddExistingBtn" style="width:auto;padding:8px 16px;font-size:14px">+ הוספה לקבוצה קיימת</button>
+      <button class="btn-line" id="bulkNewGroupBtn" style="width:auto;padding:8px 16px;font-size:14px">+ יצירת קבוצה חדשה מהנבחרים</button>
+      <button class="btn-ghost" id="bulkClearBtn" style="font-size:13px">ביטול בחירה</button>
+    </div>
+    <div class="card hidden" id="bulkExistingCard" style="margin-bottom:16px">
+      <label style="font-size:13px">בחירת פעילות קיימת</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <select id="bulkExistingSelect" style="flex:1"></select>
+        <button class="btn" id="bulkExistingConfirm" style="width:auto;padding:10px 20px">הוספה</button>
+      </div>
+    </div>
+    <div class="card hidden" id="bulkNewCard" style="margin-bottom:16px">
+      <div class="row2">
+        <div class="field">
+          <label>סוג</label>
+          <select id="bulkNewType">
+            <option>קבוצת תמיכה</option><option>סופרוויז'ן</option><option>הכשרה</option>
+            <option>קורס מרצים</option><option>הרצאה</option><option>כנס</option><option>יום גיבוש</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>כותרת <span class="req">*</span></label>
+          <input id="bulkNewTitle" placeholder="למשל: קבוצת נשים - חיפה">
+        </div>
+      </div>
+      <button class="btn" id="bulkNewConfirm" style="width:auto;padding:10px 20px">יצירה והוספת הנבחרים</button>
+    </div>
+    <div id="listArea"><p class="loading">טוען…</p></div>
+  </section>
+
+</main>
+
+<script src="shared/core.js"></script>
+<script>
+(function(){
+  "use strict";
+  const {$, esc, fmtDate, fmtTime, fmtDT, api} = YL;
+
+  const REGIONS=["צפון","חיפה והקריות","שרון","מרכז","תל אביב","ירושלים והסביבה","שפלה","דרום"];
+  const GROUPS=["גברים","נשים","מעגל שני - הורים","מעגל שני - בני זוג"];
+  const GROUP_FILTERS=GROUPS.concat(["מעורבת"]);
+  const SECTORS=["חילוני","מסורתי","דתי","חרדי","ערבי","אחר"];
+  const STATUSES=["לא נוצר קשר","להיות בקשר בהמשך","בהמתנה לקבוצה","בשיבוץ לקבוצה","לא רלוונטי"];
+  const SC={"לא נוצר קשר":["#FBEAE6","#A34430"],"להיות בקשר בהמשך":["#FBF3E2","#8A6316"],"בהמתנה לקבוצה":["#E3EEEA","#2C5952"],"בשיבוץ לקבוצה":["#E0F0E3","#256B33"],"לא רלוונטי":["#EEEEEE","#777777"]};
+
+  // ═══ ניווט בין מסכים ═══
+  async function showApp(){
+    const user = await YL.getUser();
+    if(!user){ $("viewLock").classList.remove("hidden"); return; }
+    YL.renderModuleNav($("moduleNav"), "referrals.html");
+    let roles=[];
+    try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
+    const allowed = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת פניות");
+    if(!allowed){
+      $("viewLock").classList.add("hidden");
+      $("viewNoAccess").classList.remove("hidden");
+      return;
+    }
+    $("viewLock").classList.add("hidden");
+    $("viewNoAccess").classList.add("hidden");
+    $("mainNav").classList.remove("hidden");
+    document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=YL.whoami()||"");
+    showTab("queue");
+    loadQueue(); loadDash();
+  }
+  function showTab(name){
+    $("tabQueue").classList.toggle("active",name==="queue");
+    $("tabDash").classList.toggle("active",name==="dash");
+    $("viewQueue").classList.toggle("hidden",name!=="queue");
+    $("viewDash").classList.toggle("hidden",name!=="dash");
+  }
+  $("tabQueue").onclick=()=>showTab("queue");
+  $("tabDash").onclick=()=>showTab("dash");
+  ["logoutBtn0","logoutBtn1","logoutBtn2"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
+
+  // ═══ כניסה ═══
+  $("loginBtn").onclick=async function(){
+    $("loginErr").style.display="none";
+    this.disabled=true;
+    try{
+      await YL.login($("loginEmail").value.trim(), $("loginPass").value);
+      showApp();
+    }catch(e){ $("loginErr").style.display="block"; }
+    this.disabled=false;
+  };
+
+  // ═══ תור מיון ═══
+  let queue=[];
+  let queueDraft={}; // עריכות זמניות לפי id
+
+  async function loadQueue(){
+    $("queueArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      queue=await api("/intake_submissions?status=eq.%D7%9E%D7%9E%D7%AA%D7%99%D7%9F%20%D7%9C%D7%98%D7%99%D7%A4%D7%95%D7%9C&order=submitted_at.asc");
+      queue.forEach(q=>{ if(!queueDraft[q.id]) queueDraft[q.id]={
+        regions:new Set(q.regions||[]), notes:q.notes||"", volunteer:"", status:"לא נוצר קשר"
+      }});
+      $("queueCount").textContent = queue.length ? "("+queue.length+")" : "";
+      renderQueue();
+    }catch(e){
+      $("queueArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
+    }
+  }
+
+  function renderQueue(){
+    const area=$("queueArea");
+    if(!queue.length){
+      area.innerHTML='<div class="empty"><p>אין פניות ממתינות 🎉</p><p>כל הפניות מהטופס טופלו.</p></div>';
+      return;
+    }
+    let html="";
+    queue.forEach(q=>{
+      const d=queueDraft[q.id];
+      html += '<div class="q-card">'+
+        '<div class="q-top"><div>'+
+          '<p class="q-name">'+esc(q.first_name)+' '+esc(q.last_name||"")+'</p>'+
+          '<p class="q-meta">התקבל '+fmtDT(q.submitted_at)+'</p></div></div>'+
+        '<div class="q-facts">'+
+          (q.phone?'<span dir="ltr">📞 '+esc(q.phone)+'</span>':"")+
+          (q.email?'<span dir="ltr">✉ '+esc(q.email)+'</span>':"")+
+          (q.gender?'<span>'+esc(q.gender)+'</span>':"")+
+          (q.group_type_requested?'<span>מבקש/ת: '+esc(q.group_type_requested)+'</span>':"")+
+          (q.city?'<span>עיר: '+esc(q.city)+'</span>':"")+
+          (q.age?'<span>גיל: '+esc(q.age)+'</span>':"")+
+          (q.sector?'<span>'+esc(q.sector)+'</span>':"")+
+        '</div>'+
+        (q.notes?'<div class="q-notes">'+esc(q.notes)+'</div>':"")+
+        '<div class="field" style="margin-bottom:12px"><label>אזורים (אפשר לתקן/להוסיף)</label><div class="pills" data-region-pills="'+q.id+'"></div></div>'+
+        '<div class="field" style="margin-bottom:12px"><label>הערת מעקב (מתווספת לפנייה)</label><textarea rows="2" data-field="notes" data-id="'+q.id+'" placeholder="מה עלה בשיחה, דגשים לרכזים…">'+esc(d.notes)+'</textarea></div>'+
+        '<div class="row2" style="margin-bottom:12px">'+
+          '<div class="field"><label>סטטוס התחלתי</label><select data-field="status" data-id="'+q.id+'">'+
+            STATUSES.map(s=>'<option value="'+esc(s)+'"'+(d.status===s?' selected':'')+'>'+esc(s)+'</option>').join('')+
+          '</select></div>'+
+          '<div class="field"><label>שם המתנדב/ת המאשר/ת <span class="req">*</span></label><input data-field="volunteer" data-id="'+q.id+'" value="'+esc(d.volunteer)+'" placeholder="השם שלך"></div>'+
+        '</div>'+
+        '<div class="q-actions">'+
+          '<button class="btn-line" style="flex:1" data-approve="'+q.id+'">✓ השלמה ואישור להכנסה למערכת</button>'+
+          '<button class="del" data-discard="'+q.id+'">מחיקה (ספאם/לא רלוונטי)</button>'+
+        '</div>'+
+      '</div>';
+    });
+    area.innerHTML=html;
+
+    // ציורי פילס אזור
+    queue.forEach(q=>{
+      const el=document.querySelector('[data-region-pills="'+q.id+'"]');
+      const d=queueDraft[q.id];
+      el.innerHTML="";
+      REGIONS.forEach(r=>{
+        const b=document.createElement("button");
+        b.type="button"; b.className="pill"+(d.regions.has(r)?" on":""); b.textContent=r;
+        b.onclick=()=>{ d.regions.has(r)?d.regions.delete(r):d.regions.add(r); renderQueue(); };
+        el.appendChild(b);
+      });
+    });
+
+    area.querySelectorAll('[data-field]').forEach(el=>{
+      el.oninput=el.onchange=function(){
+        const id=this.dataset.id, field=this.dataset.field;
+        queueDraft[id][field]=this.value;
+      };
+    });
+    area.querySelectorAll('[data-approve]').forEach(b=>{
+      b.onclick=()=>approveIntake(b.dataset.approve);
+    });
+    area.querySelectorAll('[data-discard]').forEach(b=>{
+      b.onclick=()=>discardIntake(b.dataset.discard);
+    });
+  }
+
+  async function approveIntake(id){
+    const sub=queue.find(q=>q.id===id);
+    const d=queueDraft[id];
+    if(!d.volunteer || !d.volunteer.trim()){
+      alert("נא למלא שם מתנדב/ת לפני האישור");
+      return;
+    }
+    const btn=document.querySelector('[data-approve="'+id+'"]');
+    btn.disabled=true; btn.textContent="שומר…";
+    try{
+      // 1. חיפוש Person קיים לפי טלפון/מייל, כדי לא ליצור כפילות
+      let personId=null;
+      const filters=[];
+      if(sub.phone) filters.push("phone.eq."+encodeURIComponent(sub.phone));
+      if(sub.email) filters.push("email.eq."+encodeURIComponent(sub.email));
+      if(filters.length){
+        const found=await api("/persons?or=("+filters.join(",")+")&select=id&limit=1");
+        if(found && found.length) personId=found[0].id;
+      }
+      // 2. אם אין - יצירת Person חדש
+      if(!personId){
+        const created=await api("/persons",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({
+          first_name:sub.first_name||"ללא שם", last_name:sub.last_name||"",
+          phone:sub.phone||null, email:sub.email||null,
+          region_hint:(Array.from(d.regions)[0])||null,
+          consent_given:true, consent_date:new Date().toISOString(), source:"form"
+        })});
+        personId=created[0].id;
+      }
+      // 3. הבטחת תפקיד "נפגע/ת" (בלי כפילות)
+      await api("/person_roles?on_conflict=person_id,role",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({
+        person_id:personId, role:"נפגע/ת"
+      })});
+      // 4. יצירת רשומת פנייה
+      await api("/referrals",{method:"POST",body:JSON.stringify({
+        person_id:personId, status:d.status,
+        group_type_requested:sub.group_type_requested, mixed_ok:!!sub.mixed_ok,
+        regions:Array.from(d.regions), city:sub.city, age:sub.age, sector:sub.sector,
+        notes:d.notes||null, intake_volunteer:d.volunteer.trim()
+      })});
+      // 5. עדכון תור המיון
+      await api("/intake_submissions?id=eq."+id,{method:"PATCH",body:JSON.stringify({
+        status:"נכנס למערכת", reviewed_by:d.volunteer.trim(), reviewed_at:new Date().toISOString()
+      })});
+      queue=queue.filter(q=>q.id!==id);
+      delete queueDraft[id];
+      $("queueCount").textContent = queue.length ? "("+queue.length+")" : "";
+      renderQueue();
+      loadDash();
+    }catch(e){
+      alert("השמירה נכשלה: "+e.message.slice(0,200));
+      btn.disabled=false; btn.textContent="✓ השלמה ואישור להכנסה למערכת";
+    }
+  }
+
+  async function discardIntake(id){
+    if(!confirm("למחוק את הפנייה הזו לצמיתות (ספאם / לא רלוונטי)?")) return;
+    try{
+      await api("/intake_submissions?id=eq."+id,{method:"DELETE"});
+      queue=queue.filter(q=>q.id!==id);
+      delete queueDraft[id];
+      $("queueCount").textContent = queue.length ? "("+queue.length+")" : "";
+      renderQueue();
+    }catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,200)); }
+  }
+
+  $("refreshQueueBtn").onclick=loadQueue;
+
+  // ═══ דשבורד כל הפניות ═══
+  let referrals=[];
+  let expanded=null;
+  let selected=new Map(); // referral row id -> person id
+
+  function updateBulkBar(){
+    $("bulkCount").textContent=selected.size;
+    $("bulkBar").classList.toggle("hidden", selected.size===0);
+    if(selected.size===0){ $("bulkExistingCard").classList.add("hidden"); $("bulkNewCard").classList.add("hidden"); }
+  }
+  $("bulkClearBtn").onclick=()=>{ selected.clear(); updateBulkBar(); renderDash(); };
+
+  $("bulkAddExistingBtn").onclick=async ()=>{
+    $("bulkNewCard").classList.add("hidden");
+    $("bulkExistingCard").classList.remove("hidden");
+    try{
+      const acts=await api("/activities?select=id,title,type&order=created_at.desc");
+      $("bulkExistingSelect").innerHTML=acts.map(a=>'<option value="'+a.id+'">'+esc(a.type+" - "+a.title)+'</option>').join('');
+    }catch(e){ alert("טעינת רשימת הפעילויות נכשלה - יש לוודא שיש הרשאה למודול הקבוצות: "+e.message.slice(0,150)); }
+  };
+  $("bulkExistingConfirm").onclick=async function(){
+    const activityId=$("bulkExistingSelect").value;
+    if(!activityId){ alert("נא לבחור פעילות"); return; }
+    this.disabled=true;
+    try{
+      const rows=Array.from(selected.values()).filter(Boolean).map(personId=>({activity_id:activityId, person_id:personId}));
+      await api("/activity_members?on_conflict=activity_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify(rows)});
+      const referralIds=Array.from(selected.keys());
+      await api("/referrals?id=in.("+referralIds.join(",")+")",{method:"PATCH",body:JSON.stringify({status:"בשיבוץ לקבוצה"})});
+      alert("נוספו בהצלחה לקבוצה, והסטטוס עודכן ל\"בשיבוץ לקבוצה\"");
+      selected.clear(); updateBulkBar(); $("bulkExistingCard").classList.add("hidden"); renderDash();
+    }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,200)); }
+    this.disabled=false;
+  };
+
+  $("bulkNewGroupBtn").onclick=()=>{
+    $("bulkExistingCard").classList.add("hidden");
+    $("bulkNewCard").classList.remove("hidden");
+  };
+  $("bulkNewConfirm").onclick=async function(){
+    const title=$("bulkNewTitle").value.trim();
+    if(!title){ alert("נא למלא כותרת לקבוצה"); return; }
+    this.disabled=true;
+    try{
+      const created=await api("/activities",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({
+        type:$("bulkNewType").value, title:title, status:"קיימת"
+      })});
+      const activityId=created[0].id;
+      const rows=Array.from(selected.values()).filter(Boolean).map(personId=>({activity_id:activityId, person_id:personId}));
+      await api("/activity_members?on_conflict=activity_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify(rows)});
+      const referralIds=Array.from(selected.keys());
+      await api("/referrals?id=in.("+referralIds.join(",")+")",{method:"PATCH",body:JSON.stringify({status:"בשיבוץ לקבוצה"})});
+      alert("הקבוצה \""+title+"\" נוצרה עם "+rows.length+" חברים, והסטטוס שלהם עודכן ל\"בשיבוץ לקבוצה\". אפשר לנהל אותה מ-activities.html");
+      $("bulkNewTitle").value="";
+      selected.clear(); updateBulkBar(); $("bulkNewCard").classList.add("hidden"); renderDash();
+    }catch(e){ alert("היצירה נכשלה: "+e.message.slice(0,200)+" (יש לוודא שיש הרשאה למודול הקבוצות)"); }
+    this.disabled=false;
+  };
+
+  function populateFilterChrome(){
+    const rf=$("fRegion"),gf=$("fGroup"),sf=$("fStatus");
+    if(!rf.dataset.filled){ REGIONS.forEach(r=>rf.insertAdjacentHTML("beforeend",'<option>'+esc(r)+'</option>')); rf.dataset.filled=1; }
+    if(!gf.dataset.filled){ GROUP_FILTERS.forEach(g=>gf.insertAdjacentHTML("beforeend",'<option>'+esc(g)+'</option>')); gf.dataset.filled=1; }
+    if(!sf.dataset.filled){ STATUSES.forEach(s=>sf.insertAdjacentHTML("beforeend",'<option>'+esc(s)+'</option>')); sf.dataset.filled=1; }
+  }
+  ["fSearch","fRegion","fGroup","fStatus"].forEach(id=>{
+    document.addEventListener("input",e=>{ if(e.target.id===id) renderDash(); });
+    document.addEventListener("change",e=>{ if(e.target.id===id) renderDash(); });
+  });
+
+  async function loadDash(){
+    populateFilterChrome();
+    $("listArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      referrals=await api("/referrals?select=*,persons(id,first_name,last_name,phone,email,region_hint,community_status)&order=created_at.desc");
+      renderDash();
+    }catch(e){
+      $("listArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
+    }
+  }
+  $("refreshDashBtn").onclick=loadDash;
+
+  function filtered(){
+    const s=($("fSearch").value||"").trim().toLowerCase();
+    const region=$("fRegion").value, group=$("fGroup").value, status=$("fStatus").value;
+    return referrals.filter(r=>{
+      const p=r.persons||{};
+      const name=((p.first_name||"")+" "+(p.last_name||"")).toLowerCase();
+      if(s && !(name.includes(s) || (p.phone||"").includes(s))) return false;
+      if(region && !(r.regions||[]).includes(region)) return false;
+      if(group){
+        if(group==="מעורבת"){ if(!r.mixed_ok) return false; }
+        else if(r.group_type_requested!==group) return false;
+      }
+      if(status && r.status!==status) return false;
+      return true;
+    });
+  }
+
+  function renderDash(){
+    const list=filtered();
+    $("counter").textContent=list.length+" פניות מתוך "+referrals.length;
+    const area=$("listArea");
+    if(!referrals.length){
+      area.innerHTML='<div class="empty"><p>אין עדיין פניות במערכת</p><p>פניות שיאושרו בתור המיון יופיעו כאן.</p></div>';
+      return;
+    }
+    if(!list.length){
+      area.innerHTML='<div class="empty"><p>אין תוצאות לפילטרים שנבחרו</p></div>';
+      return;
+    }
+    let html='<div class="table-scroll"><table><thead><tr><th></th>';
+    ["שם","טלפון","קבוצה מבוקשת","אזורים","סטטוס","נקלט/ה ע\"י","תאריך"].forEach(h=>html+="<th>"+h+"</th>");
+    html+="</tr></thead><tbody>";
+    list.forEach(r=>{
+      const p=r.persons||{};
+      const c=SC[r.status]||["#eee","#555"];
+      html += '<tr class="main-row" data-row="'+r.id+'">'+
+        '<td><input type="checkbox" class="bulk-check" data-person="'+(p.id||'')+'" '+(selected.has(r.id)?'checked':'')+' style="width:auto" onclick="event.stopPropagation()"></td>'+
+        '<td style="font-weight:600">'+esc((p.first_name||"")+" "+(p.last_name||""))+'</td>'+
+        '<td dir="ltr">'+esc(p.phone||"—")+'</td>'+
+        '<td>'+esc(r.group_type_requested||"—")+(r.mixed_ok?' <span class="badge" style="background:var(--gold-soft);color:#8A6316">גם מעורבת</span>':'')+'</td>'+
+        '<td>'+esc((r.regions||[]).join(", ")||"—")+'</td>'+
+        '<td><select class="status-sel" data-id="'+r.id+'" style="background:'+c[0]+';color:'+c[1]+'">'+
+          STATUSES.map(s=>'<option value="'+esc(s)+'"'+(r.status===s?' selected':'')+'>'+esc(s)+'</option>').join('')+
+        '</select></td>'+
+        '<td>'+esc(r.intake_volunteer||"—")+'</td>'+
+        '<td>'+fmtDate(r.created_at)+'</td>'+
+      '</tr>';
+      if(expanded===r.id){
+        const cs = p.community_status || "לא קהילה";
+        const csColor = cs==="פעיל/ה" ? "#E0F0E3;color:#256B33" : cs==="הוזמן/ה" ? "#FBF3E2;color:#8A6316" : "#EEEEEE;color:#777";
+        html += '<tr class="detail-row"><td colspan="8">'+
+          (p.email?'<p><b>מייל:</b> '+esc(p.email)+'</p>':"")+
+          (r.city?'<p><b>עיר:</b> '+esc(r.city)+'</p>':"")+
+          (r.age?'<p><b>גיל:</b> '+esc(r.age)+'</p>':"")+
+          (r.sector?'<p><b>מגזר:</b> '+esc(r.sector)+'</p>':"")+
+          (r.notes?'<p><b>הערות:</b> '+esc(r.notes)+'</p>':"")+
+          '<p style="margin-top:10px"><b>רשת קהילתית:</b> <span class="badge" style="background:'+csColor+'">'+esc(cs)+'</span></p>'+
+          (cs==="לא קהילה" ?
+            '<button type="button" class="btn-line" data-invite="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px;margin-top:8px">👥 הזמנה לרשת הקהילתית</button>'
+            : '')+
+        '</td></tr>';
+      }
+    });
+    html+="</tbody></table></div>";
+    area.innerHTML=html;
+
+    area.querySelectorAll("[data-invite]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("לשלוח הזמנת חשבון לרשת הקהילתית (מייל עם קישור להגדרת סיסמה)?")) return;
+        btn.disabled=true; btn.textContent="שולח…";
+        try{
+          await YL.callFunction("invite-to-community",{person_id:btn.dataset.invite});
+          alert("ההזמנה נשלחה בהצלחה");
+          loadDash();
+        }catch(e){
+          alert("השליחה נכשלה: "+e.message.slice(0,250));
+          btn.disabled=false; btn.textContent="👥 הזמנה לרשת הקהילתית";
+        }
+      };
+    });
+
+    area.querySelectorAll(".bulk-check").forEach(cb=>{
+      cb.onchange=function(){
+        const rowId=this.closest("tr").dataset.row;
+        if(this.checked) selected.set(rowId, this.dataset.person);
+        else selected.delete(rowId);
+        updateBulkBar();
+      };
+    });
+
+    area.querySelectorAll(".status-sel").forEach(sel=>{
+      sel.onclick=e=>e.stopPropagation();
+      sel.onchange=async function(){
+        const r=referrals.find(x=>x.id===sel.dataset.id);
+        const prev=r.status;
+        r.status=sel.value;
+        try{ await api("/referrals?id=eq."+r.id,{method:"PATCH",body:JSON.stringify({status:sel.value})}); renderDash(); }
+        catch(e){ r.status=prev; renderDash(); alert("עדכון הסטטוס נכשל: "+e.message.slice(0,150)); }
+      };
+    });
+    area.querySelectorAll("[data-row]").forEach(row=>{
+      row.onclick=()=>{ expanded=(expanded===row.dataset.row)?null:row.dataset.row; renderDash(); };
+    });
+  }
+
+  $("exportBtn").onclick=function(){
+    const head=["שם","טלפון","מייל","קבוצה מבוקשת","גם מעורבת?","אזורים","עיר","גיל","מגזר","הערות","נקלט/ה ע\"י","סטטוס","תאריך"];
+    const rows=filtered().map(r=>{
+      const p=r.persons||{};
+      return [(p.first_name||"")+" "+(p.last_name||""), p.phone, p.email, r.group_type_requested,
+        (r.mixed_ok?"כן":""), (r.regions||[]).join(" / "), r.city, r.age, r.sector, r.notes,
+        r.intake_volunteer, r.status, fmtDate(r.created_at)];
+    });
+    const csv="\uFEFF"+[head].concat(rows).map(row=>
+      row.map(v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"').join(",")
+    ).join("\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url; a.download="פניות-יוצאים-לאור.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ═══ אתחול ═══
+  (async function init(){
+    if(YL.isLoggedIn()){
+      const ok=await YL.refreshSession();
+      if(ok){ showApp(); return; }
+    }
+  })();
+})();
+</script>
+</body>
+</html>

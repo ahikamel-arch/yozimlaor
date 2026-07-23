@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יוצאים לאור – תוכן</title>
+<link rel="stylesheet" href="shared/core.css">
+<style>
+  .type-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--primary-soft);color:var(--primary)}
+  .picker-box{position:relative;margin-bottom:8px}
+  .picker-results{border:1px solid var(--line);border-radius:10px;margin-top:4px;background:#fff;max-height:180px;overflow-y:auto}
+  .picker-item{padding:8px 12px;cursor:pointer;font-size:14px}
+  .picker-item:hover{background:var(--primary-soft)}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);
+    border-radius:99px;padding:5px 10px 5px 6px;font-size:13px;font-weight:600;margin:0 4px 4px 0}
+  .chip button{background:none;border:none;color:var(--primary);cursor:pointer;font-size:14px;padding:0 2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <div class="head-inner">
+    <div class="head-top">
+      <div>
+        <h1>יוצאים <span>לאור</span></h1>
+        <p class="sub">תוכן - פודקאסט ומרכז ידע</p>
+      </div>
+    </div>
+    <nav id="moduleNav" class="hidden"></nav>
+  </div>
+</header>
+
+<main>
+
+  <section id="viewLock">
+    <div class="card tiny">
+      <div class="lock-icon">🔒</div>
+      <h2 style="font-size:20px;margin-bottom:4px">כניסת צוות</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">אזור זה מיועד לצוות התוכן בלבד.</p>
+      <div class="field" style="text-align:right">
+        <label>מייל</label>
+        <input id="loginEmail" inputmode="email" dir="ltr" placeholder="you@example.com">
+      </div>
+      <div class="field" style="text-align:right">
+        <label>סיסמה</label>
+        <input type="password" id="loginPass">
+      </div>
+      <p class="errmsg" id="loginErr" style="display:none;margin-bottom:8px">ההתחברות נכשלה - בדקו מייל וסיסמה.</p>
+      <button class="btn" id="loginBtn">כניסה</button>
+    </div>
+  </section>
+
+  <section id="viewNoAccess" class="hidden">
+    <div class="card tiny">
+      <div class="lock-icon">🚫</div>
+      <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למודול זה</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">המשתמש שלך מחובר, אבל לא שויך לתפקיד "רכז/ת תוכן". פנה/י למנהל/ת המערכת.</p>
+      <button class="btn-ghost" id="logoutBtn0">התנתקות</button>
+    </div>
+  </section>
+
+  <section id="viewMain" class="hidden">
+    <div class="dash-head">
+      <div>
+        <h2 style="font-size:20px">תוכן</h2>
+        <p style="font-size:14px;color:var(--ink-soft)"><span id="counter"></span></p>
+      </div>
+      <div class="dash-actions">
+        <button class="btn-line" id="newItemBtn">+ פריט תוכן חדש</button>
+        <button class="btn-ghost" id="refreshBtn">↻ רענון</button>
+        <button class="btn-ghost" id="logoutBtn1">התנתקות (<span class="who1"></span>)</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="newItemCard" style="margin-bottom:20px">
+      <h2 style="font-size:17px;margin-bottom:16px">פריט תוכן חדש</h2>
+      <div class="row2">
+        <div class="field">
+          <label>סוג <span class="req">*</span></label>
+          <select id="niType"><option>פרק פודקאסט</option><option>מאמר מרכז ידע</option></select>
+        </div>
+        <div class="field">
+          <label>סטטוס</label>
+          <select id="niStatus"><option>טיוטה</option><option>מאושר לפרסום</option><option>פורסם</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>כותרת <span class="req">*</span></label>
+        <input id="niTitle" placeholder="למשל: פרק 12 - להתחיל מחדש">
+      </div>
+      <div class="field">
+        <label>אורח/ת או מחבר/ת - חיפוש במאגר הקהילה</label>
+        <div class="picker-box" id="niAuthorPicker"></div>
+      </div>
+      <div class="field">
+        <label>או: שם חיצוני (אם לא רשום/ה במערכת)</label>
+        <input id="niExternalName" placeholder="אופציונלי - אם האורח/ת לא ברשימת הקהילה">
+      </div>
+      <div class="field">
+        <label>תגיות נושא</label>
+        <input id="niTags" placeholder="מופרדות בפסיק, למשל: החלמה, זוגיות">
+      </div>
+      <div class="field">
+        <label>תמצית / הערות שוליים</label>
+        <textarea id="niBody" rows="3" placeholder="על מה הפרק/המאמר מדבר…"></textarea>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>תאריך הקלטה/כתיבה</label>
+          <input type="date" id="niContentDate">
+        </div>
+        <div class="field">
+          <label>תאריך פרסום (בפועל/מתוכנן)</label>
+          <input type="date" id="niPublishDate">
+        </div>
+      </div>
+      <div class="field">
+        <label>קישור (לאחר פרסום)</label>
+        <input id="niLink" placeholder="https://…" dir="ltr">
+      </div>
+      <div class="field">
+        <label>הערות פנימיות (לא לפרסום)</label>
+        <input id="niNotes">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="saveItemBtn" style="width:auto;padding:12px 24px">שמירה</button>
+        <button class="btn-ghost" id="cancelItemBtn">ביטול</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input id="fSearch" placeholder="חיפוש כותרת / תגית…">
+      <select id="fType"><option value="">כל הסוגים</option><option>פרק פודקאסט</option><option>מאמר מרכז ידע</option></select>
+      <select id="fStatus"><option value="">כל הסטטוסים</option><option>טיוטה</option><option>מאושר לפרסום</option><option>פורסם</option></select>
+    </div>
+
+    <div id="listArea"><p class="loading">טוען…</p></div>
+  </section>
+
+</main>
+
+<script src="shared/core.js"></script>
+<script>
+(function(){
+  "use strict";
+  const {$, esc, fmtDate, api} = YL;
+  let canAccess=false;
+
+  async function showApp(){
+    const user = await YL.getUser();
+    if(!user){ $("viewLock").classList.remove("hidden"); return; }
+    YL.renderModuleNav($("moduleNav"), "content.html");
+    let roles=[];
+    try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
+    canAccess = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת תוכן");
+    if(!canAccess){
+      $("viewLock").classList.add("hidden");
+      $("viewNoAccess").classList.remove("hidden");
+      return;
+    }
+    $("viewLock").classList.add("hidden");
+    $("viewNoAccess").classList.add("hidden");
+    $("viewMain").classList.remove("hidden");
+    document.querySelectorAll(".who1").forEach(el=>el.textContent=YL.whoami()||"");
+    loadItems();
+  }
+  ["logoutBtn0","logoutBtn1"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
+  $("loginBtn").onclick=async function(){
+    $("loginErr").style.display="none";
+    this.disabled=true;
+    try{ await YL.login($("loginEmail").value.trim(), $("loginPass").value); await showApp(); }
+    catch(e){ $("loginErr").style.display="block"; }
+    this.disabled=false;
+  };
+
+  // ═══ פריט חדש ═══
+  let niAuthor=null;
+  YL.personPicker($("niAuthorPicker"), sel=>{
+    niAuthor=sel;
+    $("niExternalName").value="";
+    $("niExternalName").disabled=true;
+    $("niAuthorPicker").insertAdjacentHTML("beforeend",'<div class="chip" data-chip>נבחר/ה: '+esc(sel.name)+' <button type="button" data-chip-clear>✕</button></div>');
+    const clear=$("niAuthorPicker").querySelector('[data-chip-clear]');
+    clear.onclick=()=>{ niAuthor=null; clear.closest('[data-chip]').remove(); $("niExternalName").disabled=false; };
+  });
+
+  $("newItemBtn").onclick=()=>$("newItemCard").classList.remove("hidden");
+  $("cancelItemBtn").onclick=()=>$("newItemCard").classList.add("hidden");
+  $("saveItemBtn").onclick=async function(){
+    const title=$("niTitle").value.trim();
+    if(!title){ alert("נא למלא כותרת"); return; }
+    this.disabled=true;
+    try{
+      await api("/content_items",{method:"POST",body:JSON.stringify({
+        type:$("niType").value, title:title,
+        author_person_id: niAuthor?niAuthor.id:null,
+        author_name_external: niAuthor?null:($("niExternalName").value.trim()||null),
+        topic_tags:$("niTags").value.trim()||null,
+        body:$("niBody").value.trim()||null,
+        link_url:$("niLink").value.trim()||null,
+        status:$("niStatus").value,
+        content_date:$("niContentDate").value||null,
+        publish_date:$("niPublishDate").value||null,
+        notes:$("niNotes").value.trim()||null,
+        created_by: YL.whoami()||null
+      })});
+      ["niTitle","niTags","niBody","niLink","niContentDate","niPublishDate","niNotes","niExternalName"].forEach(id=>$(id).value="");
+      $("niExternalName").disabled=false; niAuthor=null;
+      $("newItemCard").classList.add("hidden");
+      loadItems();
+    }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); }
+    this.disabled=false;
+  };
+
+  // ═══ רשימה ═══
+  let items=[];
+  ["fSearch","fType","fStatus"].forEach(id=>{
+    document.addEventListener("input",e=>{ if(e.target.id===id) render(); });
+    document.addEventListener("change",e=>{ if(e.target.id===id) render(); });
+  });
+
+  async function loadItems(){
+    $("listArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      items = await api("/content_items?select=*,persons(first_name,last_name)&order=created_at.desc");
+      render();
+    }catch(e){
+      $("listArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
+    }
+  }
+  $("refreshBtn").onclick=loadItems;
+
+  function filtered(){
+    const s=($("fSearch").value||"").trim().toLowerCase();
+    const type=$("fType").value, status=$("fStatus").value;
+    return items.filter(it=>{
+      if(s && !((it.title||"").toLowerCase().includes(s) || (it.topic_tags||"").toLowerCase().includes(s))) return false;
+      if(type && it.type!==type) return false;
+      if(status && it.status!==status) return false;
+      return true;
+    });
+  }
+
+  const statusColor = {"טיוטה":"#EEEEEE;color:#777","מאושר לפרסום":"#FBF3E2;color:#8A6316","פורסם":"#E0F0E3;color:#256B33"};
+
+  function render(){
+    const list=filtered();
+    $("counter").textContent=list.length+" פריטים מתוך "+items.length;
+    const area=$("listArea");
+    if(!items.length){
+      area.innerHTML='<div class="empty"><p>אין עדיין פריטי תוכן</p><p>לוחצים על "+ פריט תוכן חדש" כדי להתחיל.</p></div>';
+      return;
+    }
+    if(!list.length){ area.innerHTML='<div class="empty"><p>אין תוצאות לפילטרים שנבחרו</p></div>'; return; }
+
+    area.innerHTML = list.map(it=>{
+      const authorName = it.persons ? (it.persons.first_name+" "+(it.persons.last_name||"")) : (it.author_name_external||"");
+      return '<div class="q-card">'+
+        '<div class="q-top"><div>'+
+          '<span class="type-badge">'+esc(it.type)+'</span> '+
+          '<p class="q-name" style="display:inline">'+esc(it.title)+'</p>'+
+          '<p class="q-meta">'+(authorName?'עם '+esc(authorName)+' · ':'')+(it.content_date?fmtDate(it.content_date):'')+'</p>'+
+        '</div><select class="status-sel" data-id="'+it.id+'" style="background:'+statusColor[it.status]+'">'+
+          ['טיוטה','מאושר לפרסום','פורסם'].map(s=>'<option'+(it.status===s?' selected':'')+'>'+s+'</option>').join('')+
+        '</select></div>'+
+        (it.topic_tags?'<p style="font-size:12px;color:var(--ink-soft);margin-top:4px">🏷 '+esc(it.topic_tags)+'</p>':'')+
+        (it.body?'<div class="q-notes">'+esc(it.body)+'</div>':'')+
+        (it.link_url?'<p style="font-size:13px;margin-top:8px"><a href="'+esc(it.link_url)+'" target="_blank" style="color:var(--primary)">🔗 '+esc(it.link_url)+'</a></p>':'')+
+        (it.notes?'<p style="font-size:12px;color:var(--ink-soft);margin-top:6px">📝 '+esc(it.notes)+'</p>':'')+
+        '<div style="margin-top:10px"><button type="button" class="del" data-delete="'+it.id+'">מחיקה</button></div>'+
+      '</div>';
+    }).join('');
+
+    area.querySelectorAll(".status-sel").forEach(sel=>{
+      sel.onchange=async function(){
+        try{ await api("/content_items?id=eq."+sel.dataset.id,{method:"PATCH",body:JSON.stringify({status:sel.value})}); loadItems(); }
+        catch(e){ alert("העדכון נכשל: "+e.message.slice(0,150)); }
+      };
+    });
+    area.querySelectorAll("[data-delete]").forEach(b=>{
+      b.onclick=async ()=>{
+        if(!confirm("למחוק את הפריט הזה?")) return;
+        try{ await api("/content_items?id=eq."+b.dataset.delete,{method:"DELETE"}); loadItems(); }
+        catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,150)); }
+      };
+    });
+  }
+
+  (async function init(){
+    if(YL.isLoggedIn()){
+      const ok=await YL.refreshSession();
+      if(ok){ await showApp(); return; }
+    }
+  })();
+})();
+</script>
+</body>
+</html>

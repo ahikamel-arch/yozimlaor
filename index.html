@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יוצאים לאור – הרשמה</title>
+<style>
+  :root{
+    --bg:#F3F6F4; --card:#fff; --ink:#22403C; --ink-soft:#5A7370;
+    --line:#DCE5E1; --primary:#2C5952; --primary-soft:#E3EEEA;
+    --gold:#D99E3B; --gold-soft:#FBF3E2; --err:#B4442C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh}
+  h1,h2{font-family:Georgia,'Times New Roman',serif}
+  header{background:var(--card);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .glow{position:absolute;top:-70px;left:50%;transform:translateX(-50%);width:340px;height:140px;
+    border-radius:0 0 340px 340px;background:radial-gradient(ellipse at top,var(--gold-soft) 0%,transparent 70%);pointer-events:none}
+  .head-inner{max-width:640px;margin:0 auto;padding:24px 16px;position:relative;text-align:center}
+  h1{font-size:26px}
+  h1 span{color:var(--gold)}
+  .sub{font-size:14px;color:var(--ink-soft);margin-top:4px}
+
+  main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
+
+  label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+  label .req{color:var(--gold)}
+  input,select,textarea{width:100%;padding:11px 14px;border-radius:10px;font-size:16px;font-family:inherit;
+    border:1.5px solid var(--line);background:#FDFDFC;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  input.err,select.err{border-color:#D08064}
+  .field{margin-bottom:20px}
+  .errmsg{font-size:12px;color:var(--err);margin-top:4px;display:none}
+  .field.invalid .errmsg{display:block}
+  .row2{display:grid;grid-template-columns:1fr;gap:20px;margin-bottom:20px}
+  @media(min-width:560px){.row2{grid-template-columns:1fr 1fr}}
+  .row2 .field{margin-bottom:0}
+
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{padding:9px 16px;border-radius:99px;font-size:15px;border:1.5px solid var(--line);
+    background:#FDFDFC;color:var(--ink-soft);cursor:pointer;font-family:inherit}
+  .pill.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+  .mixed-pill{border-style:dashed;font-size:14px}
+  .mixed-pill.on{background:var(--gold-soft);border-color:var(--gold);border-style:dashed;color:#8A6316;font-weight:700}
+
+  .consent{display:flex;gap:10px;align-items:flex-start;background:var(--primary-soft);border-radius:12px;
+    padding:14px 16px;margin-bottom:20px}
+  .consent input{width:auto;margin-top:3px}
+  .consent p{font-size:13px;color:var(--ink);line-height:1.5}
+
+  .btn{padding:14px;border-radius:12px;border:none;cursor:pointer;background:var(--primary);
+    color:#fff;font-size:17px;font-weight:700;font-family:inherit;width:100%}
+  button:disabled{opacity:.5;cursor:default}
+
+  .toast{padding:32px 24px;text-align:center}
+  .toast .icon{font-size:40px;margin-bottom:12px}
+  .toast h2{font-size:20px;margin-bottom:8px}
+  .toast p{font-size:14px;color:var(--ink-soft)}
+
+  .warnbox{margin-bottom:20px;padding:14px;border-radius:12px;background:#FBEAE6;border:1px solid #E5B8AB;
+    color:#A34430;font-size:14px;display:none}
+  .warnbox.show{display:block}
+  .note{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:12px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <div class="head-inner">
+    <h1>יוצאים <span>לאור</span></h1>
+    <p class="sub">טופס פנייה - להצטרפות לקהילה או לקבלת מידע</p>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="formCard">
+    <div class="warnbox" id="formError"></div>
+
+    <div class="field" id="f-name">
+      <label>שם <span class="req">*</span></label>
+      <input id="name" placeholder="שם מלא, כינוי, או 'מעדיפ/ה להישאר אנונימי/ת'">
+      <p class="errmsg">נא למלא שם, גם אם זה כינוי או ציון שאת/ה מעדיפ/ה אנונימיות</p>
+    </div>
+
+    <div class="row2">
+      <div class="field" id="f-phone">
+        <label>טלפון</label>
+        <input id="phone" placeholder="050-1234567" inputmode="tel" dir="ltr">
+      </div>
+      <div class="field" id="f-email">
+        <label>מייל</label>
+        <input id="email" placeholder="name@example.com" inputmode="email" dir="ltr">
+        <p class="errmsg">כתובת מייל לא תקינה</p>
+      </div>
+    </div>
+    <p class="note" id="contactNote" style="margin:-12px 0 20px">נא למלא טלפון או מייל לפחות אחד מהם, כדי שנוכל לחזור אליך</p>
+
+    <div class="field"><label>מגדר</label><div class="pills" id="genderPills"></div></div>
+
+    <div class="field" id="f-group">
+      <label>איזו קבוצה מחפש/ת?</label>
+      <div class="pills" id="groupPills"></div>
+      <button type="button" class="pill mixed-pill" id="mixedPill" style="margin-top:8px">+ מתאימה גם קבוצה מעורבת</button>
+    </div>
+
+    <div class="field" id="f-region">
+      <label>אזורים מבוקשים (אפשר לבחור כמה)</label>
+      <div class="pills" id="regionPills"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>עיר ספציפית (אם רלוונטי)</label>
+        <input id="city" placeholder="למשל: חיפה">
+      </div>
+      <div class="field">
+        <label>גיל (משוער)</label>
+        <input id="age" placeholder="למשל: 34" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="field"><label>מגזר</label><div class="pills" id="sectorPills"></div></div>
+
+    <div class="field">
+      <label>רוצה להוסיף משהו?</label>
+      <textarea id="notes" rows="4" placeholder="כל דבר שיעזור לנו להבין את הפנייה שלך…"></textarea>
+    </div>
+
+    <div class="consent">
+      <input type="checkbox" id="consent">
+      <p>אני מאשר/ת שמירת הפרטים שמילאתי במערכת הפנימית של "יוצאים לאור", לצורך יצירת קשר וטיפול בפנייה. הפרטים ישמשו את הצוות והמתנדבים בלבד, ולא יועברו לגורם חיצוני.</p>
+    </div>
+    <p class="errmsg" id="consentErr" style="display:none;margin-top:-14px;margin-bottom:16px">צריך לאשר את שמירת הפרטים כדי להמשיך</p>
+
+    <button class="btn" id="submitBtn">שליחת הפנייה</button>
+  </div>
+
+  <div class="card toast hidden" id="doneCard">
+    <div class="icon">✓</div>
+    <h2>הפנייה נשלחה, תודה</h2>
+    <p>מישהו/י מהצוות שלנו יחזור אליך בהקדם. אם ציינת שאת/ה מעדיפ/ה אנונימיות - נכבד את זה.</p>
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  const SUPABASE_URL = "https://hvnyhtbmrniuqicdtfsg.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_y9ZmwLpDGgrBN6M7XQLAcQ_j6_PUh-C";
+
+  const REGIONS=["צפון","חיפה והקריות","שרון","מרכז","תל אביב","ירושלים והסביבה","שפלה","דרום"];
+  const GROUPS=["גברים","נשים","מעגל שני - הורים","מעגל שני - בני זוג"];
+  const GENDERS=["אישה","גבר","אחר / מעדיפ.ה לא לציין"];
+  const SECTORS=["חילוני","מסורתי","דתי","חרדי","ערבי","אחר"];
+
+  function $(id){return document.getElementById(id)}
+
+  let mixed=false, gender=null, group=null, sector=null;
+  const regions=new Set();
+
+  function renderPills(container,list,selected,onSelect,multi){
+    const el=$(container); el.innerHTML="";
+    list.forEach(v=>{
+      const b=document.createElement("button");
+      b.type="button"; b.className="pill"; b.textContent=v;
+      const isOn = multi ? selected.has(v) : selected===v;
+      if(isOn) b.classList.add("on");
+      b.onclick=()=>onSelect(v);
+      el.appendChild(b);
+    });
+  }
+  function draw(){
+    renderPills("genderPills",GENDERS,gender,v=>{gender=(gender===v?null:v);draw()},false);
+    renderPills("groupPills",GROUPS,group,v=>{group=(group===v?null:v);draw()},false);
+    renderPills("regionPills",REGIONS,regions,v=>{regions.has(v)?regions.delete(v):regions.add(v);draw()},true);
+    renderPills("sectorPills",SECTORS,sector,v=>{sector=(sector===v?null:v);draw()},false);
+    $("mixedPill").classList.toggle("on",mixed);
+  }
+  $("mixedPill").onclick=()=>{mixed=!mixed;draw()};
+  draw();
+
+  function showErr(fieldId,msg){
+    const f=$(fieldId); f.classList.add("invalid");
+    if(msg){const e=f.querySelector(".errmsg"); if(e) e.textContent=msg}
+  }
+  function clearErrs(){
+    document.querySelectorAll(".field.invalid").forEach(f=>f.classList.remove("invalid"));
+    $("consentErr").style.display="none";
+    $("formError").classList.remove("show");
+  }
+
+  $("submitBtn").onclick=async function(){
+    clearErrs();
+    const name=$("name").value.trim();
+    const phone=$("phone").value.trim();
+    const email=$("email").value.trim();
+    const consent=$("consent").checked;
+    let bad=false;
+
+    if(!name){showErr("f-name");bad=true}
+    if(!phone && !email){showErr("f-phone");showErr("f-email");bad=true}
+    if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showErr("f-email","כתובת מייל לא תקינה");bad=true}
+    if(!consent){$("consentErr").style.display="block";bad=true}
+
+    if(bad){
+      $("formError").textContent="נא לתקן את השדות המסומנים למטה";
+      $("formError").classList.add("show");
+      return;
+    }
+
+    const payload={
+      first_name:name, last_name:"", phone:phone||null, email:email||null,
+      gender:gender, group_type_requested:group, mixed_ok:mixed,
+      regions:Array.from(regions), city:$("city").value.trim()||null,
+      age:$("age").value?parseInt($("age").value,10):null,
+      sector:sector, notes:$("notes").value.trim()||null,
+      consent_given:true
+    };
+
+    this.disabled=true; this.textContent="שולח…";
+    try{
+      const res=await fetch(SUPABASE_URL+"/rest/v1/intake_submissions",{
+        method:"POST",
+        headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error(await res.text());
+      $("formCard").classList.add("hidden");
+      $("doneCard").classList.remove("hidden");
+    }catch(e){
+      $("formError").textContent="השליחה נכשלה, נסה/י שוב בעוד רגע. אם זה חוזר על עצמו, אפשר ליצור קשר טלפוני.";
+      $("formError").classList.add("show");
+      this.disabled=false; this.textContent="שליחת הפנייה";
+    }
+  };
+})();
+</script>
+</body>
+</html>

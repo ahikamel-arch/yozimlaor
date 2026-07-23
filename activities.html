@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יוצאים לאור – פעילויות</title>
+<link rel="stylesheet" href="shared/core.css">
+<style>
+  .type-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--primary-soft);color:var(--primary)}
+  .session-row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#FAFBFA}
+  .session-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .picker-box{position:relative;margin-bottom:8px}
+  .picker-results{border:1px solid var(--line);border-radius:10px;margin-top:4px;background:#fff;max-height:180px;overflow-y:auto}
+  .picker-item{padding:8px 12px;cursor:pointer;font-size:14px}
+  .picker-item:hover{background:var(--primary-soft)}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);
+    border-radius:99px;padding:5px 10px 5px 6px;font-size:13px;font-weight:600;margin:0 4px 4px 0}
+  .chip button{background:none;border:none;color:var(--primary);cursor:pointer;font-size:14px;padding:0 2px}
+  .attend-list{margin-top:10px}
+  details.act-details summary{cursor:pointer;color:var(--primary);font-weight:700;font-size:14px;margin-top:12px;list-style:none}
+  details.act-details summary::-webkit-details-marker{display:none}
+  details.act-details summary::before{content:"▸ "}
+  details.act-details[open] summary::before{content:"▾ "}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <div class="head-inner">
+    <div class="head-top">
+      <div>
+        <h1>יוצאים <span>לאור</span></h1>
+        <p class="sub">פעילויות - קבוצות, סופרוויז'ן, הכשרות, אירועים</p>
+      </div>
+    </div>
+    <nav id="moduleNav" class="hidden"></nav>
+  </div>
+</header>
+
+<main>
+
+  <section id="viewLock">
+    <div class="card tiny">
+      <div class="lock-icon">🔒</div>
+      <h2 style="font-size:20px;margin-bottom:4px">כניסת צוות</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">אזור זה מיועד לצוות ולרכזי/ות פעילויות בלבד.</p>
+      <div class="field" style="text-align:right">
+        <label>מייל</label>
+        <input id="loginEmail" inputmode="email" dir="ltr" placeholder="you@example.com">
+      </div>
+      <div class="field" style="text-align:right">
+        <label>סיסמה</label>
+        <input type="password" id="loginPass">
+      </div>
+      <p class="errmsg" id="loginErr" style="display:none;margin-bottom:8px">ההתחברות נכשלה - בדקו מייל וסיסמה.</p>
+      <button class="btn" id="loginBtn">כניסה</button>
+    </div>
+  </section>
+
+  <section id="viewNoAccess" class="hidden">
+    <div class="card tiny">
+      <div class="lock-icon">🚫</div>
+      <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למודול זה</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">המשתמש שלך מחובר, אבל לא שויך לתפקיד שנותן גישה לפעילויות. פנה/י למנהל/ת המערכת.</p>
+      <button class="btn-ghost" id="logoutBtn0">התנתקות</button>
+    </div>
+  </section>
+
+  <section id="viewMain" class="hidden">
+    <div class="dash-head">
+      <div>
+        <h2 style="font-size:20px">פעילויות</h2>
+        <p style="font-size:14px;color:var(--ink-soft)"><span id="counter"></span></p>
+      </div>
+      <div class="dash-actions">
+        <button class="btn-line" id="newActivityBtn">+ פעילות חדשה</button>
+        <button class="btn-ghost" id="refreshBtn">↻ רענון</button>
+        <button class="btn-ghost" id="logoutBtn1">התנתקות (<span class="who1"></span>)</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="newActivityCard" style="margin-bottom:20px">
+      <h2 style="font-size:17px;margin-bottom:16px">פעילות חדשה</h2>
+      <div class="row2">
+        <div class="field">
+          <label>סוג <span class="req">*</span></label>
+          <select id="naType">
+            <option>קבוצת תמיכה</option><option>סופרוויז'ן</option><option>הכשרה</option>
+            <option>קורס מרצים</option><option>הרצאה</option><option>כנס</option><option>יום גיבוש</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>קהל יעד</label>
+          <select id="naAudience">
+            <option value="">לא צוין</option>
+            <option>נפגעים/ות</option><option>מלווים</option><option>מנחים</option><option>מתנדבים</option><option>פתוח לכולם</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>כותרת/מקום מזהה <span class="req">*</span></label>
+        <input id="naTitle" placeholder="למשל: קבוצת נשים - חיפה">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>סטטוס</label>
+          <select id="naStatus"><option>קיימת</option><option>בהקמה</option><option>הסתיימה</option></select>
+        </div>
+        <div class="field">
+          <label>הערות</label>
+          <input id="naNotes" placeholder="אופציונלי">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="saveActivityBtn" style="width:auto;padding:12px 24px">שמירה</button>
+        <button class="btn-ghost" id="cancelActivityBtn">ביטול</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input id="fSearch" placeholder="חיפוש כותרת / מנחה…">
+      <select id="fType"><option value="">כל הסוגים</option></select>
+      <select id="fStatus"><option value="">כל הסטטוסים</option><option>קיימת</option><option>בהקמה</option><option>הסתיימה</option></select>
+    </div>
+
+    <div id="listArea"><p class="loading">טוען…</p></div>
+  </section>
+
+</main>
+
+<script src="shared/core.js"></script>
+<script>
+(function(){
+  "use strict";
+  const {$, esc, fmtDate, api} = YL;
+  const TYPES=["קבוצת תמיכה","סופרוויז'ן","הכשרה","קורס מרצים","הרצאה","כנס","יום גיבוש"];
+
+  function showApp_init(){
+    if(!$("fType").dataset.filled){ TYPES.forEach(t=>$("fType").insertAdjacentHTML("beforeend",'<option>'+esc(t)+'</option>')); $("fType").dataset.filled=1; }
+  }
+
+  let canManageActivities = false; // מנהל/ת או רכז/ת קבוצות - הגישה היחידה הרלוונטית כאן
+
+  async function showApp(){
+    const user = await YL.getUser();
+    if(!user){ $("viewLock").classList.remove("hidden"); return; }
+    YL.renderModuleNav($("moduleNav"), "activities.html");
+    let roles=[];
+    try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
+    canManageActivities = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת קבוצות");
+
+    if(!canManageActivities){
+      $("viewLock").classList.add("hidden");
+      $("viewNoAccess").classList.remove("hidden");
+      return;
+    }
+    $("viewLock").classList.add("hidden");
+    $("viewNoAccess").classList.add("hidden");
+    $("viewMain").classList.remove("hidden");
+    document.querySelectorAll(".who1").forEach(el=>el.textContent=YL.whoami()||"");
+    showApp_init();
+    loadActivities();
+  }
+
+  ["logoutBtn0","logoutBtn1"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
+
+  $("loginBtn").onclick=async function(){
+    $("loginErr").style.display="none";
+    this.disabled=true;
+    try{ await YL.login($("loginEmail").value.trim(), $("loginPass").value); await showApp(); }
+    catch(e){ $("loginErr").style.display="block"; }
+    this.disabled=false;
+  };
+
+  // בורר האנשים המשותף (YL.personPicker) נטען עכשיו מ-shared/core.js
+
+  // ═══ פעילות חדשה ═══
+  $("newActivityBtn").onclick=()=>$("newActivityCard").classList.remove("hidden");
+  $("cancelActivityBtn").onclick=()=>$("newActivityCard").classList.add("hidden");
+  $("saveActivityBtn").onclick=async function(){
+    const title=$("naTitle").value.trim();
+    if(!title){ alert("נא למלא כותרת"); return; }
+    this.disabled=true;
+    try{
+      await api("/activities",{method:"POST",body:JSON.stringify({
+        type:$("naType").value, audience:$("naAudience").value||null, title:title,
+        status:$("naStatus").value, notes:$("naNotes").value.trim()||null
+      })});
+      $("naTitle").value=""; $("naNotes").value="";
+      $("newActivityCard").classList.add("hidden");
+      loadActivities();
+    }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); }
+    this.disabled=false;
+  };
+
+  // ═══ רשימת פעילויות ═══
+  let activities=[];
+  let openActivity=null;
+
+  ["fSearch","fType","fStatus"].forEach(id=>{
+    document.addEventListener("input",e=>{ if(e.target.id===id) renderActivities(); });
+    document.addEventListener("change",e=>{ if(e.target.id===id) renderActivities(); });
+  });
+
+  async function loadActivities(){
+    $("listArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      activities=await api("/activities?order=created_at.desc");
+      renderActivities();
+    }catch(e){
+      $("listArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
+    }
+  }
+  $("refreshBtn").onclick=loadActivities;
+
+  function filtered(){
+    const s=($("fSearch").value||"").trim().toLowerCase();
+    const type=$("fType").value, status=$("fStatus").value;
+    return activities.filter(a=>{
+      if(s && !(a.title||"").toLowerCase().includes(s)) return false;
+      if(type && a.type!==type) return false;
+      if(status && a.status!==status) return false;
+      return true;
+    });
+  }
+
+  function renderActivities(){
+    const list=filtered();
+    $("counter").textContent=list.length+" פעילויות מתוך "+activities.length;
+    const area=$("listArea");
+    if(!activities.length){
+      area.innerHTML='<div class="empty"><p>אין עדיין פעילויות</p><p>לוחצים על "+ פעילות חדשה" כדי להתחיל.</p></div>';
+      return;
+    }
+    if(!list.length){ area.innerHTML='<div class="empty"><p>אין תוצאות לפילטרים שנבחרו</p></div>'; return; }
+
+    area.innerHTML = list.map(a=>{
+      const statusBadge = a.status==="קיימת" ? '#E0F0E3;color:#256B33' : (a.status==="בהקמה"?'#FBF3E2;color:#8A6316':'#EEEEEE;color:#777');
+      return '<div class="q-card">'+
+        '<div class="q-top"><div>'+
+          '<span class="type-badge">'+esc(a.type)+'</span> '+
+          '<p class="q-name" style="display:inline">'+esc(a.title)+'</p>'+
+          (a.audience?'<p class="q-meta">'+esc(a.audience)+'</p>':'')+
+        '</div><span class="badge" style="background:'+statusBadge+'">'+esc(a.status)+'</span></div>'+
+        (a.notes?'<div class="q-notes">'+esc(a.notes)+'</div>':'')+
+        '<details class="act-details" data-roster-toggle="'+a.id+'"><summary>חברי קבוצה וקישור למנחה</summary>'+
+          '<div data-roster-area="'+a.id+'" data-token="'+a.access_token+'"><p class="loading">טוען…</p></div>'+
+        '</details>'+
+        '<details class="act-details" '+(openActivity===a.id?'open':'')+' data-act="'+a.id+'"><summary>מפגשים ומעקב</summary>'+
+          '<div data-sessions-area="'+a.id+'"><p class="loading">טוען מפגשים…</p></div>'+
+        '</details>'+
+      '</div>';
+    }).join('');
+
+    area.querySelectorAll('[data-roster-toggle]').forEach(det=>{
+      det.ontoggle=function(){ if(this.open) loadRoster(this.dataset.rosterToggle); };
+    });
+    area.querySelectorAll('details[data-act]').forEach(det=>{
+      det.ontoggle=function(){
+        openActivity = this.open ? this.dataset.act : null;
+        if(this.open) loadSessions(this.dataset.act);
+      };
+    });
+    if(openActivity) loadSessions(openActivity);
+  }
+
+  // ═══ חברי קבוצה (Roster) + קישור מנחה ═══
+  async function loadRoster(activityId){
+    const area=document.querySelector('[data-roster-area="'+activityId+'"]');
+    if(!area) return;
+    const token=area.dataset.token;
+    try{
+      const rows=await api("/activity_members?activity_id=eq."+activityId+"&select=id,person_id,is_facilitator,persons(first_name,last_name,phone)&order=is_facilitator.desc");
+      renderRoster(activityId, area, rows, token);
+    }catch(e){
+      area.innerHTML='<p style="color:var(--err);font-size:13px">הטעינה נכשלה</p>';
+    }
+  }
+
+  function renderRoster(activityId, area, rows, token){
+    const link = location.origin + location.pathname.replace(/[^/]*$/,'') + 'facilitator.html?token=' + token;
+    const facilitators = rows.filter(r=>r.is_facilitator);
+    const pickerId="roster-picker-"+activityId;
+    area.innerHTML =
+      (facilitators.length ?
+        '<div class="q-notes">🔗 קישור למנחה - '+esc(facilitators.map(f=>f.persons.first_name).join(", "))+':<br>'+
+        '<span style="word-break:break-all;font-size:12px" dir="ltr">'+esc(link)+'</span> '+
+        '<button type="button" class="btn-ghost" data-copy-link="'+esc(link)+'" style="font-size:12px;margin-top:4px">העתקת קישור</button></div>'
+        : '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:10px">עדיין לא סומן/ה מנחה בקבוצה הזו - סמנ/י אחד/ת מהחברים למטה.</p>')+
+      '<div class="attend-list">'+
+      (rows.length ? rows.map(r=>'<span class="chip">'+
+        (r.is_facilitator?'⭐ ':'')+esc((r.persons.first_name||"")+" "+(r.persons.last_name||""))+
+        ' <button type="button" data-toggle-facilitator="'+r.id+'" title="סמן/י כמנחה">'+(r.is_facilitator?'ביטול מנחה':'סימון כמנחה')+'</button>'+
+        ' <button type="button" data-remove-member="'+r.id+'">✕</button></span>').join('') : '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין חברי קבוצה.</p>')+
+      '</div>'+
+      '<div id="'+pickerId+'" class="picker-box" style="margin-top:10px"></div>';
+
+    const copyBtn=area.querySelector('[data-copy-link]');
+    if(copyBtn) copyBtn.onclick=()=>{
+      navigator.clipboard.writeText(copyBtn.dataset.copyLink).then(()=>{
+        copyBtn.textContent="הועתק ✓"; setTimeout(()=>copyBtn.textContent="העתקת קישור",1500);
+      }).catch(()=>alert("העתקה אוטומטית נכשלה. הקישור מופיע למעלה, ניתן להעתיק ידנית."));
+    };
+    area.querySelectorAll('[data-toggle-facilitator]').forEach(b=>{
+      b.onclick=async ()=>{
+        const row=rows.find(r=>r.id===b.dataset.toggleFacilitator);
+        try{
+          await api("/activity_members?id=eq."+row.id,{method:"PATCH",body:JSON.stringify({is_facilitator:!row.is_facilitator})});
+          loadRoster(activityId);
+        }catch(e){ alert("העדכון נכשל: "+e.message.slice(0,150)); }
+      };
+    });
+    area.querySelectorAll('[data-remove-member]').forEach(b=>{
+      b.onclick=async ()=>{
+        if(!confirm("להסיר מהקבוצה?")) return;
+        try{ await api("/activity_members?id=eq."+b.dataset.removeMember,{method:"DELETE"}); loadRoster(activityId); }
+        catch(e){ alert("ההסרה נכשלה: "+e.message.slice(0,150)); }
+      };
+    });
+
+    YL.personPicker(document.getElementById(pickerId), async sel=>{
+      try{
+        await api("/activity_members?on_conflict=activity_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({
+          activity_id:activityId, person_id:sel.id
+        })});
+        loadRoster(activityId);
+      }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,150)); }
+    }, "הוספת חבר/ה לקבוצה (חיפוש לפי שם/טלפון)…", true);
+  }
+
+  // ═══ מפגשים ═══
+  async function loadSessions(activityId){
+    const area=document.querySelector('[data-sessions-area="'+activityId+'"]');
+    if(!area) return;
+    try{
+      const sessions=await api("/activity_sessions?activity_id=eq."+activityId+"&order=session_date.desc");
+      renderSessions(activityId, area, sessions);
+    }catch(e){
+      area.innerHTML='<p style="color:var(--err);font-size:13px">טעינת המפגשים נכשלה</p>';
+    }
+  }
+
+  function renderSessions(activityId, area, sessions){
+    let html = sessions.map(s=>
+      '<div class="session-row" data-session="'+s.id+'">'+
+        '<div class="session-top"><div>'+
+          '<b>'+(s.session_date?fmtDate(s.session_date):'ללא תאריך')+'</b>'+
+          (s.location?' · '+esc(s.location):'')+
+        '</div><button type="button" class="btn-ghost" data-attend-toggle="'+s.id+'" data-activity="'+activityId+'" style="font-size:12px">ניהול נוכחות</button></div>'+
+        (s.notes?'<p style="font-size:13px;color:var(--ink-soft);margin-top:6px">'+esc(s.notes)+'</p>':'')+
+        '<div class="field" style="margin-top:10px;margin-bottom:4px"><label style="font-size:12px">משוב מנחה על המפגש</label>'+
+          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea>'+
+          '<button type="button" class="btn-ghost" data-save-feedback="'+s.id+'" style="margin-top:4px;font-size:12px">שמירת משוב</button></div>'+
+        '<div class="hidden" data-attend-area="'+s.id+'"></div>'+
+      '</div>'
+    ).join('');
+
+    html += '<div style="margin-top:12px"><div class="row2" style="margin-bottom:8px">'+
+      '<input type="date" data-new-session-date="'+activityId+'">'+
+      '<input placeholder="מקום (אופציונלי)" data-new-session-loc="'+activityId+'">'+
+      '</div><button type="button" class="btn-line" data-add-session="'+activityId+'" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button></div>';
+
+    area.innerHTML = sessions.length ? html : (
+      '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:8px">אין עדיין מפגשים.</p>' + html
+    );
+
+    area.querySelectorAll('[data-attend-toggle]').forEach(btn=>{
+      btn.onclick=()=>toggleAttendance(btn.dataset.attendToggle, btn.dataset.activity);
+    });
+    area.querySelectorAll('[data-save-feedback]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        const sid=btn.dataset.saveFeedback;
+        const val=area.querySelector('[data-feedback="'+sid+'"]').value;
+        btn.disabled=true; btn.textContent="שומר…";
+        try{
+          await api("/activity_sessions?id=eq."+sid,{method:"PATCH",body:JSON.stringify({facilitator_feedback:val})});
+          btn.textContent="נשמר ✓";
+          setTimeout(()=>{btn.textContent="שמירת משוב";btn.disabled=false;},1500);
+        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="שמירת משוב"; }
+      };
+    });
+    const addBtn=area.querySelector('[data-add-session="'+activityId+'"]');
+    if(addBtn) addBtn.onclick=async ()=>{
+      const date=area.querySelector('[data-new-session-date="'+activityId+'"]').value;
+      const loc=area.querySelector('[data-new-session-loc="'+activityId+'"]').value.trim();
+      addBtn.disabled=true;
+      try{
+        await api("/activity_sessions",{method:"POST",body:JSON.stringify({activity_id:activityId, session_date:date||null, location:loc||null})});
+        loadSessions(activityId);
+      }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,150)); }
+      addBtn.disabled=false;
+    };
+  }
+
+  async function toggleAttendance(sessionId, activityId){
+    const area=document.querySelector('[data-attend-area="'+sessionId+'"]');
+    if(!area) return;
+    if(!area.classList.contains("hidden")){ area.classList.add("hidden"); return; }
+    area.classList.remove("hidden");
+    area.innerHTML='<p class="loading" style="padding:10px 0">טוען…</p>';
+    try{
+      const [roster, current] = await Promise.all([
+        api("/activity_members?activity_id=eq."+activityId+"&select=person_id,persons(first_name,last_name)"),
+        api("/session_attendance?session_id=eq."+sessionId+"&select=id,person_id")
+      ]);
+      renderAttendance(sessionId, area, roster, current);
+    }catch(e){
+      area.innerHTML='<p style="color:var(--err);font-size:13px">הטעינה נכשלה</p>';
+    }
+  }
+
+  function renderAttendance(sessionId, area, roster, current){
+    if(!roster.length){
+      area.innerHTML='<p style="font-size:13px;color:var(--ink-soft)">אין עדיין חברי קבוצה משויכים - יש להוסיף ב"חברי קבוצה" למעלה לפני סימון נוכחות.</p>';
+      return;
+    }
+    const presentIds = new Map(current.map(c=>[c.person_id, c.id]));
+    area.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' + roster.map(m=>{
+      const checked = presentIds.has(m.person_id);
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:14px">'+
+        '<input type="checkbox" data-attend-person="'+m.person_id+'" '+(checked?'checked':'')+' style="width:auto">'+
+        esc((m.persons.first_name||"")+" "+(m.persons.last_name||""))+
+      '</label>';
+    }).join('') + '</div>';
+
+    area.querySelectorAll('[data-attend-person]').forEach(cb=>{
+      cb.onchange=async function(){
+        const personId=this.dataset.attendPerson;
+        this.disabled=true;
+        try{
+          if(this.checked){
+            await api("/session_attendance?on_conflict=session_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({
+              session_id:sessionId, person_id:personId, present:true
+            })});
+          }else{
+            const attId=presentIds.get(personId);
+            if(attId) await api("/session_attendance?id=eq."+attId,{method:"DELETE"});
+          }
+        }catch(e){ alert("העדכון נכשל: "+e.message.slice(0,150)); this.checked=!this.checked; }
+        this.disabled=false;
+      };
+    });
+  }
+
+  // ═══ אתחול ═══
+  (async function init(){
+    if(YL.isLoggedIn()){
+      const ok=await YL.refreshSession();
+      if(ok){ await showApp(); return; }
+    }
+  })();
+})();
+</script>
+</body>
+</html>

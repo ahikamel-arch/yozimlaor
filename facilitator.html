@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יוצאים לאור – אזור מנחה</title>
+<link rel="stylesheet" href="shared/core.css">
+<style>
+  .session-row{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;background:#FAFBFA}
+  .roster-check{display:flex;align-items:center;gap:8px;font-size:15px;padding:6px 0}
+  .roster-check input{width:auto}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <div class="head-inner">
+    <h1 style="text-align:center">יוצאים <span>לאור</span></h1>
+    <p class="sub" style="text-align:center">אזור מנחה</p>
+  </div>
+</header>
+
+<main class="narrow">
+
+  <div id="viewLoading" class="card"><p class="loading">טוען…</p></div>
+
+  <div id="viewInvalid" class="card hidden" style="text-align:center">
+    <div class="lock-icon">🚫</div>
+    <h2 style="font-size:18px;margin-bottom:8px">הקישור לא תקין</h2>
+    <p style="font-size:14px;color:var(--ink-soft)">אם קיבלת קישור הזה מהעמותה וזה לא עובד, כדאי לבדוק מול הרכז/ת - יכול להיות שהקישור התיישן.</p>
+  </div>
+
+  <div id="viewApp" class="hidden">
+    <div class="card" style="margin-bottom:16px">
+      <h2 id="actTitle" style="font-size:20px;margin-bottom:4px"></h2>
+      <p id="actMeta" style="font-size:14px;color:var(--ink-soft)"></p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="font-size:17px;margin-bottom:12px">חברי הקבוצה</h2>
+      <div id="rosterArea"><p class="loading">טוען…</p></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="font-size:17px">מפגשים</h2>
+      </div>
+      <div class="row2" style="margin-bottom:8px">
+        <input type="date" id="newSessDate">
+        <input placeholder="מקום (אופציונלי)" id="newSessLoc">
+      </div>
+      <button class="btn-line" id="addSessBtn" style="padding:8px 16px;font-size:13px;margin-bottom:16px">+ הוספת מפגש חדש</button>
+      <div id="sessionsArea"><p class="loading">טוען…</p></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="shared/core.js"></script>
+<script>
+(function(){
+  "use strict";
+  const {$, esc, fmtDate} = YL;
+  const token = new URLSearchParams(location.search).get("token");
+
+  async function rpc(name, args){
+    const res = await fetch(YL.SUPABASE_URL+"/rest/v1/rpc/"+name,{
+      method:"POST",
+      headers:{apikey:YL.SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify(args)
+    });
+    if(!res.ok){ const t=await res.text(); throw new Error(t.slice(0,300)); }
+    const text=await res.text();
+    if(!text) return null;
+    try{ return JSON.parse(text); }catch(e){ return null; }
+  }
+
+  let roster = [];
+
+  async function init(){
+    if(!token){ showInvalid(); return; }
+    try{
+      const acts = await rpc("facilitator_get_activity",{p_token:token});
+      if(!acts || !acts.length){ showInvalid(); return; }
+      const act = acts[0];
+      $("actTitle").textContent = act.title;
+      $("actMeta").textContent = act.type + (act.audience ? " · "+act.audience : "");
+      $("viewLoading").classList.add("hidden");
+      $("viewApp").classList.remove("hidden");
+      await loadRoster();
+      await loadSessions();
+    }catch(e){ showInvalid(); }
+  }
+  function showInvalid(){
+    $("viewLoading").classList.add("hidden");
+    $("viewInvalid").classList.remove("hidden");
+  }
+
+  async function loadRoster(){
+    try{
+      roster = await rpc("facilitator_get_roster",{p_token:token});
+      $("rosterArea").innerHTML = roster.length ? roster.map(m=>
+        '<p style="padding:4px 0">'+(m.is_facilitator?'⭐ ':'')+esc((m.first_name||"")+" "+(m.last_name||""))+'</p>'
+      ).join('') : '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין חברי קבוצה רשומים - פנה/י לרכז/ת כדי להוסיף.</p>';
+    }catch(e){
+      $("rosterArea").innerHTML = '<p style="color:var(--err);font-size:13px">טעינת חברי הקבוצה נכשלה</p>';
+    }
+  }
+
+  async function loadSessions(){
+    $("sessionsArea").innerHTML = '<p class="loading">טוען…</p>';
+    try{
+      const sessions = await rpc("facilitator_get_sessions",{p_token:token});
+      renderSessions(sessions);
+    }catch(e){
+      $("sessionsArea").innerHTML = '<p style="color:var(--err);font-size:13px">טעינת המפגשים נכשלה</p>';
+    }
+  }
+
+  function renderSessions(sessions){
+    const area = $("sessionsArea");
+    if(!sessions.length){
+      area.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין מפגשים. אפשר להוסיף למעלה.</p>';
+      return;
+    }
+    area.innerHTML = sessions.map(s=>
+      '<div class="session-row" data-session="'+s.id+'">'+
+        '<b>'+(s.session_date?fmtDate(s.session_date):'ללא תאריך')+'</b>'+(s.location?' · '+esc(s.location):'')+
+        '<div class="field" style="margin-top:10px;margin-bottom:6px"><label style="font-size:12px">משוב על המפגש</label>'+
+          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך, דגשים…">'+esc(s.facilitator_feedback||"")+'</textarea>'+
+          '<button type="button" class="btn-ghost" data-save-fb="'+s.id+'" style="margin-top:4px;font-size:12px">שמירת משוב</button></div>'+
+        '<button type="button" class="btn-ghost" data-attend="'+s.id+'" style="font-size:12px">סימון נוכחות</button>'+
+        '<div class="hidden" data-attend-area="'+s.id+'" style="margin-top:10px"></div>'+
+      '</div>'
+    ).join('');
+
+    area.querySelectorAll('[data-save-fb]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        const sid=btn.dataset.saveFb;
+        const val=area.querySelector('[data-feedback="'+sid+'"]').value;
+        btn.disabled=true; btn.textContent="שומר…";
+        try{
+          await rpc("facilitator_save_feedback",{p_token:token, p_session_id:sid, p_feedback:val});
+          btn.textContent="נשמר ✓"; setTimeout(()=>{btn.textContent="שמירת משוב";btn.disabled=false;},1500);
+        }catch(e){ alert("השמירה נכשלה"); btn.disabled=false; btn.textContent="שמירת משוב"; }
+      };
+    });
+    area.querySelectorAll('[data-attend]').forEach(btn=>{
+      btn.onclick=()=>toggleAttendance(btn.dataset.attend);
+    });
+  }
+
+  async function toggleAttendance(sessionId){
+    const area = document.querySelector('[data-attend-area="'+sessionId+'"]');
+    if(!area) return;
+    if(!area.classList.contains("hidden")){ area.classList.add("hidden"); return; }
+    area.classList.remove("hidden");
+    area.innerHTML = '<p class="loading">טוען…</p>';
+    if(!roster.length){
+      area.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">אין חברי קבוצה רשומים עדיין.</p>';
+      return;
+    }
+    try{
+      const current = await rpc("facilitator_get_attendance",{p_token:token, p_session_id:sessionId});
+      const presentIds = new Set((current||[]).map(c=>c.person_id));
+      area.innerHTML = roster.map(m=>
+        '<label class="roster-check"><input type="checkbox" data-person="'+m.person_id+'" '+(presentIds.has(m.person_id)?'checked':'')+'>'+
+        esc((m.first_name||"")+" "+(m.last_name||""))+'</label>'
+      ).join('');
+      area.querySelectorAll('[data-person]').forEach(cb=>{
+        cb.onchange=async function(){
+          this.disabled=true;
+          try{
+            if(this.checked) await rpc("facilitator_mark_present",{p_token:token, p_session_id:sessionId, p_person_id:this.dataset.person});
+            else await rpc("facilitator_mark_absent",{p_token:token, p_session_id:sessionId, p_person_id:this.dataset.person});
+          }catch(e){ alert("העדכון נכשל"); this.checked=!this.checked; }
+          this.disabled=false;
+        };
+      });
+    }catch(e){
+      area.innerHTML = '<p style="color:var(--err);font-size:13px">הטעינה נכשלה</p>';
+    }
+  }
+
+  $("addSessBtn").onclick = async function(){
+    const date=$("newSessDate").value, loc=$("newSessLoc").value.trim();
+    this.disabled=true;
+    try{
+      await rpc("facilitator_add_session",{p_token:token, p_date:date||null, p_location:loc||null});
+      $("newSessDate").value=""; $("newSessLoc").value="";
+      await loadSessions();
+    }catch(e){ alert("ההוספה נכשלה"); }
+    this.disabled=false;
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>
