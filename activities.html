@@ -265,8 +265,20 @@
         '<details class="act-details" '+(openActivity===a.id?'open':'')+' data-act="'+a.id+'"><summary>מפגשים ומעקב</summary>'+
           '<div data-sessions-area="'+a.id+'"><p class="loading">טוען מפגשים…</p></div>'+
         '</details>'+
+        (canManageActivities ? '<div style="margin-top:12px"><button type="button" class="del" data-delete-activity="'+a.id+'">🗑 מחיקת הפעילות הזו לגמרי</button></div>' : '')+
       '</div>';
     }).join('');
+
+    area.querySelectorAll('[data-delete-activity]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        if(!confirm('למחוק את הפעילות הזו לגמרי? כל המפגשים, הנוכחות, וחברי הקבוצה יימחקו יחד איתה. פעולה בלתי הפיכה.')) return;
+        btn.disabled=true; btn.textContent="מוחק…";
+        try{
+          await api("/activities?id=eq."+btn.dataset.deleteActivity,{method:"DELETE"});
+          loadActivities();
+        }catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,200)); btn.disabled=false; btn.textContent="🗑 מחיקת הפעילות הזו לגמרי"; }
+      };
+    });
 
     area.querySelectorAll('[data-roster-toggle]').forEach(det=>{
       det.ontoggle=function(){ if(this.open) loadRoster(this.dataset.rosterToggle); };
