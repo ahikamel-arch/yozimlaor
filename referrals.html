@@ -185,7 +185,7 @@
   async function loadQueue(){
     $("queueArea").innerHTML='<p class="loading">טוען…</p>';
     try{
-      queue=await api("/intake_submissions?status=eq.%D7%9E%D7%9E%D7%AA%D7%99%D7%9F%20%D7%9C%D7%98%D7%99%D7%A4%D7%95%D7%9C&order=submitted_at.asc");
+      queue=await api("/intake_submissions?status=eq.%D7%9E%D7%9E%D7%AA%D7%99%D7%9F%20%D7%9C%D7%98%D7%99%D7%A4%D7%95%D7%9C&order=submitted_at.desc");
       queue.forEach(q=>{ if(!queueDraft[q.id]) queueDraft[q.id]={
         regions:new Set(q.regions||[]), notes:q.notes||"", volunteer:"", status:"לא נוצר קשר"
       }});
@@ -471,12 +471,28 @@
           '<p style="margin-top:10px"><b>רשת קהילתית:</b> <span class="badge" style="background:'+csColor+'">'+esc(cs)+'</span></p>'+
           (cs==="לא קהילה" ?
             '<button type="button" class="btn-line" data-invite="'+(p.id||"")+'" style="width:auto;padding:8px 16px;font-size:13px;margin-top:8px">👥 הזמנה לרשת הקהילתית</button>'
-            : '')+
+            : '<button type="button" class="del" data-revoke="'+(p.id||"")+'" style="margin-top:8px">↺ ביטול/איפוס גישה לקהילה (לצורך הזמנה חוזרת)</button>')+
         '</td></tr>';
       }
     });
     html+="</tbody></table></div>";
     area.innerHTML=html;
+
+    area.querySelectorAll("[data-revoke]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("לבטל את הגישה לקהילה ולאפס, כדי לאפשר הזמנה מחדש?")) return;
+        btn.disabled=true; btn.textContent="מבטל…";
+        try{
+          await YL.callFunction("revoke-community-invite",{person_id:btn.dataset.revoke});
+          alert("בוטל בהצלחה - אפשר להזמין מחדש");
+          loadDash();
+        }catch(e){
+          alert("הביטול נכשל: "+e.message.slice(0,250));
+          btn.disabled=false; btn.textContent="↺ ביטול/איפוס גישה לקהילה (לצורך הזמנה חוזרת)";
+        }
+      };
+    });
 
     area.querySelectorAll("[data-invite]").forEach(btn=>{
       btn.onclick=async (e)=>{
