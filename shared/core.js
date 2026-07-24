@@ -195,10 +195,12 @@ const YL = (function(){
     return data;
   }
 
+  function accessToken(){ return isLoggedIn() ? session.access_token : SUPABASE_KEY; }
+
   return {
     $, esc, fmtDate, fmtTime, fmtDT,
     isLoggedIn, whoami, login, logout, refreshSession, getUser,
-    setSessionFromTokens, setPassword,
+    setSessionFromTokens, setPassword, accessToken,
     api, personPicker, renderModuleNav, callFunction, SUPABASE_URL, SUPABASE_KEY
   };
 })();
