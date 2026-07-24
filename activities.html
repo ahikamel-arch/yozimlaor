@@ -104,6 +104,36 @@
       </div>
       <div class="row2">
         <div class="field">
+          <label>עיר</label>
+          <input id="naCity" placeholder="למשל: חיפה">
+        </div>
+        <div class="field">
+          <label>הרכב הקבוצה</label>
+          <select id="naGroupGender"><option value="">לא רלוונטי</option><option>נשים</option><option>גברים</option><option>מעורבת</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>יום קבוע בשבוע</label>
+          <select id="naDay"><option value="">לא קבוע</option><option>ראשון</option><option>שני</option><option>שלישי</option><option>רביעי</option><option>חמישי</option><option>שישי</option><option>שבת</option></select>
+        </div>
+        <div class="field">
+          <label>שעה קבועה</label>
+          <input type="time" id="naTime">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>תדירות</label>
+          <select id="naFrequency"><option>שבועי</option><option>דו-שבועי</option><option>חד-פעמי</option><option>לא קבוע</option></select>
+        </div>
+        <div class="field">
+          <label>מספר מפגשים מתוכנן</label>
+          <input id="naSessionCount" inputmode="numeric" placeholder="למשל: 12">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
           <label>סטטוס</label>
           <select id="naStatus"><option>קיימת</option><option>בהקמה</option><option>הסתיימה</option></select>
         </div>
@@ -200,9 +230,15 @@
     try{
       await api("/activities",{method:"POST",body:JSON.stringify({
         type:$("naType").value, audience:$("naAudience").value||null, title:title,
+        city:$("naCity").value.trim()||null,
+        group_gender:$("naGroupGender").value||null,
+        day_of_week:$("naDay").value||null,
+        time_of_day:$("naTime").value||null,
+        frequency:$("naFrequency").value||null,
+        planned_session_count:$("naSessionCount").value?parseInt($("naSessionCount").value,10):null,
         status:$("naStatus").value, notes:$("naNotes").value.trim()||null
       })});
-      $("naTitle").value=""; $("naNotes").value="";
+      ["naTitle","naNotes","naCity","naSessionCount"].forEach(id=>$(id).value="");
       $("newActivityCard").classList.add("hidden");
       loadActivities();
     }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); }
@@ -257,6 +293,7 @@
           '<span class="type-badge">'+esc(a.type)+'</span> '+
           '<p class="q-name" style="display:inline">'+esc(a.title)+'</p>'+
           (a.audience?'<p class="q-meta">'+esc(a.audience)+'</p>':'')+
+          '<p class="q-meta">'+[a.city, a.group_gender, (a.day_of_week?'יום '+a.day_of_week:''), a.time_of_day, a.frequency].filter(Boolean).join(' · ')+'</p>'+
         '</div><span class="badge" style="background:'+statusBadge+'">'+esc(a.status)+'</span></div>'+
         (a.notes?'<div class="q-notes">'+esc(a.notes)+'</div>':'')+
         '<details class="act-details" data-roster-toggle="'+a.id+'"><summary>חברי קבוצה וקישור למנחה</summary>'+
@@ -357,6 +394,23 @@
   }
 
   // ═══ מפגשים ═══
+  const DAY_INDEX={"ראשון":0,"שני":1,"שלישי":2,"רביעי":3,"חמישי":4,"שישי":5,"שבת":6};
+
+  function generateSessionDates(startStr, dayName, frequency, count){
+    const dates=[];
+    if(!startStr || !count) return dates;
+    let d=new Date(startStr+"T00:00:00");
+    if(dayName && DAY_INDEX[dayName]!==undefined){
+      while(d.getDay()!==DAY_INDEX[dayName]) d.setDate(d.getDate()+1);
+    }
+    const step = frequency==="דו-שבועי" ? 14 : 7;
+    for(let i=0;i<count;i++){
+      dates.push(new Date(d).toISOString().slice(0,10));
+      d.setDate(d.getDate()+step);
+    }
+    return dates;
+  }
+
   async function loadSessions(activityId){
     const area=document.querySelector('[data-sessions-area="'+activityId+'"]');
     if(!area) return;
@@ -369,6 +423,7 @@
   }
 
   function renderSessions(activityId, area, sessions){
+    const act = activities.find(a=>a.id===activityId) || {};
     let html = sessions.map(s=>
       '<div class="session-row" data-session="'+s.id+'">'+
         '<div class="session-top"><div>'+
@@ -377,13 +432,32 @@
         '</div><button type="button" class="btn-ghost" data-attend-toggle="'+s.id+'" data-activity="'+activityId+'" style="font-size:12px">ניהול נוכחות</button></div>'+
         (s.notes?'<p style="font-size:13px;color:var(--ink-soft);margin-top:6px">'+esc(s.notes)+'</p>':'')+
         '<div class="field" style="margin-top:10px;margin-bottom:4px"><label style="font-size:12px">משוב מנחה על המפגש</label>'+
-          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea>'+
-          '<button type="button" class="btn-ghost" data-save-feedback="'+s.id+'" style="margin-top:4px;font-size:12px">שמירת משוב</button></div>'+
+          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea></div>'+
+        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">אתגרים שעלו</label>'+
+          '<textarea rows="2" data-challenges="'+s.id+'" placeholder="קשיים, מתחים, נושאים שדרשו התייחסות…">'+esc(s.challenges||"")+'</textarea></div>'+
+        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">תגובות/משוב מהמשתתפים</label>'+
+          '<textarea rows="2" data-pfeedback="'+s.id+'" placeholder="מה עלה משיחות עם המשתתפים, וואטסאפ אחרי המפגש וכו׳…">'+esc(s.participant_feedback||"")+'</textarea></div>'+
+        '<button type="button" class="btn-ghost" data-save-feedback="'+s.id+'" style="margin-bottom:10px;font-size:12px">שמירת פרטי המפגש</button>'+
+        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">קבצים מצורפים (צילומי מסך וואטסאפ וכו׳)</label>'+
+          '<div data-attachments-list="'+s.id+'" style="margin-bottom:6px"><p style="font-size:12px;color:var(--ink-soft)">טוען…</p></div>'+
+          '<input type="file" data-file-input="'+s.id+'" accept="image/*,.pdf" style="margin-bottom:6px">'+
+          '<button type="button" class="btn-ghost" data-upload="'+s.id+'" data-activity="'+activityId+'" style="font-size:12px">📎 העלאת קובץ</button>'+
+        '</div>'+
         '<div class="hidden" data-attend-area="'+s.id+'"></div>'+
       '</div>'
     ).join('');
 
-    html += '<div style="margin-top:12px"><div class="row2" style="margin-bottom:8px">'+
+    html += '<div style="margin-top:12px;padding:12px;border:1px dashed var(--line);border-radius:10px">'+
+      '<p style="font-size:13px;font-weight:700;margin-bottom:8px">🗓 יצירת מפגשים אוטומטית'+
+        (act.day_of_week?' (כל יום '+act.day_of_week+(act.frequency?', '+act.frequency:'')+')':' (לא הוגדר יום קבוע לפעילות - אפשר עדיין לבחור תאריך התחלה)')+'</p>'+
+      '<div class="row2" style="margin-bottom:8px">'+
+        '<input type="date" data-gen-start="'+activityId+'">'+
+        '<input inputmode="numeric" data-gen-count="'+activityId+'" placeholder="כמה מפגשים ליצור" value="'+(act.planned_session_count||'')+'">'+
+      '</div>'+
+      '<button type="button" class="btn-line" data-generate-sessions="'+activityId+'" style="padding:8px 16px;font-size:13px">יצירת המפגשים</button>'+
+    '</div>';
+
+    html += '<div style="margin-top:12px"><p style="font-size:13px;font-weight:700;margin-bottom:8px">או הוספת מפגש בודד</p><div class="row2" style="margin-bottom:8px">'+
       '<input type="date" data-new-session-date="'+activityId+'">'+
       '<input placeholder="מקום (אופציונלי)" data-new-session-loc="'+activityId+'">'+
       '</div><button type="button" class="btn-line" data-add-session="'+activityId+'" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button></div>';
@@ -392,19 +466,39 @@
       '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:8px">אין עדיין מפגשים.</p>' + html
     );
 
+    sessions.forEach(s=>loadAttachments(s.id));
+
     area.querySelectorAll('[data-attend-toggle]').forEach(btn=>{
       btn.onclick=()=>toggleAttendance(btn.dataset.attendToggle, btn.dataset.activity);
     });
     area.querySelectorAll('[data-save-feedback]').forEach(btn=>{
       btn.onclick=async ()=>{
         const sid=btn.dataset.saveFeedback;
-        const val=area.querySelector('[data-feedback="'+sid+'"]').value;
         btn.disabled=true; btn.textContent="שומר…";
         try{
-          await api("/activity_sessions?id=eq."+sid,{method:"PATCH",body:JSON.stringify({facilitator_feedback:val})});
+          await api("/activity_sessions?id=eq."+sid,{method:"PATCH",body:JSON.stringify({
+            facilitator_feedback: area.querySelector('[data-feedback="'+sid+'"]').value,
+            challenges: area.querySelector('[data-challenges="'+sid+'"]').value,
+            participant_feedback: area.querySelector('[data-pfeedback="'+sid+'"]').value
+          })});
           btn.textContent="נשמר ✓";
-          setTimeout(()=>{btn.textContent="שמירת משוב";btn.disabled=false;},1500);
-        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="שמירת משוב"; }
+          setTimeout(()=>{btn.textContent="שמירת פרטי המפגש";btn.disabled=false;},1500);
+        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="שמירת פרטי המפגש"; }
+      };
+    });
+    area.querySelectorAll('[data-upload]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        const sid=btn.dataset.upload, actId=btn.dataset.activity;
+        const fileInput=area.querySelector('[data-file-input="'+sid+'"]');
+        const file=fileInput.files[0];
+        if(!file){ alert("נא לבחור קובץ קודם"); return; }
+        btn.disabled=true; btn.textContent="מעלה…";
+        try{
+          await uploadSessionFile(actId, sid, file);
+          fileInput.value="";
+          loadAttachments(sid);
+        }catch(e){ alert("ההעלאה נכשלה: "+e.message.slice(0,200)); }
+        btn.disabled=false; btn.textContent="📎 העלאת קובץ";
       };
     });
     const addBtn=area.querySelector('[data-add-session="'+activityId+'"]');
@@ -418,6 +512,73 @@
       }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,150)); }
       addBtn.disabled=false;
     };
+    const genBtn=area.querySelector('[data-generate-sessions="'+activityId+'"]');
+    if(genBtn) genBtn.onclick=async ()=>{
+      const start=area.querySelector('[data-gen-start="'+activityId+'"]').value;
+      const count=parseInt(area.querySelector('[data-gen-count="'+activityId+'"]').value||"0",10);
+      if(!start || !count){ alert("נא למלא תאריך התחלה ומספר מפגשים"); return; }
+      const dates=generateSessionDates(start, act.day_of_week, act.frequency, count);
+      if(!confirm("ליצור "+dates.length+" מפגשים, מ-"+dates[0]+" עד "+dates[dates.length-1]+"?")) return;
+      genBtn.disabled=true; genBtn.textContent="יוצר…";
+      try{
+        const rows=dates.map(d=>({activity_id:activityId, session_date:d, location:act.city||null}));
+        await api("/activity_sessions",{method:"POST",body:JSON.stringify(rows)});
+        loadSessions(activityId);
+      }catch(e){ alert("היצירה נכשלה: "+e.message.slice(0,200)); genBtn.disabled=false; genBtn.textContent="יצירת המפגשים"; }
+    };
+  }
+
+  // ═══ קבצים מצורפים (Supabase Storage) ═══
+  async function uploadSessionFile(activityId, sessionId, file){
+    const path = activityId+"/"+sessionId+"/"+Date.now()+"_"+file.name;
+    const res = await fetch(YL.SUPABASE_URL+"/storage/v1/object/session-attachments/"+encodeURIComponent(path),{
+      method:"POST",
+      headers:{
+        "apikey":YL.SUPABASE_KEY,
+        "Authorization":"Bearer "+YL.accessToken(),
+        "Content-Type": file.type || "application/octet-stream"
+      },
+      body:file
+    });
+    if(!res.ok){ throw new Error((await res.text()).slice(0,200)); }
+    await api("/session_attachments",{method:"POST",body:JSON.stringify({
+      session_id:sessionId, file_path:path, file_name:file.name, uploaded_by:YL.whoami()||null
+    })});
+  }
+
+  async function loadAttachments(sessionId){
+    const el=document.querySelector('[data-attachments-list="'+sessionId+'"]');
+    if(!el) return;
+    try{
+      const rows=await api("/session_attachments?session_id=eq."+sessionId+"&order=created_at.desc");
+      if(!rows.length){ el.innerHTML='<p style="font-size:12px;color:var(--ink-soft)">אין עדיין קבצים.</p>'; return; }
+      el.innerHTML = rows.map(r=>'<div class="chip" data-att="'+r.id+'" data-path="'+esc(r.file_path)+'">📎 '+esc(r.file_name||"קובץ")+' <button type="button" data-del-att="'+r.id+'">✕</button></div>').join('');
+      el.querySelectorAll('[data-att]').forEach(chip=>{
+        chip.onclick=async (e)=>{
+          if(e.target.closest('[data-del-att]')) return;
+          try{
+            const res=await fetch(YL.SUPABASE_URL+"/storage/v1/object/sign/session-attachments/"+encodeURIComponent(chip.dataset.path),{
+              method:"POST",
+              headers:{"apikey":YL.SUPABASE_KEY,"Authorization":"Bearer "+(YL.accessToken()),"Content-Type":"application/json"},
+              body:JSON.stringify({expiresIn:120})
+            });
+            const d=await res.json();
+            if(d.signedURL) window.open(YL.SUPABASE_URL+"/storage/v1"+d.signedURL, "_blank");
+            else alert("פתיחת הקובץ נכשלה");
+          }catch(err){ alert("פתיחת הקובץ נכשלה"); }
+        };
+      });
+      el.querySelectorAll('[data-del-att]').forEach(b=>{
+        b.onclick=async (e)=>{
+          e.stopPropagation();
+          if(!confirm("למחוק את הקובץ?")) return;
+          try{ await api("/session_attachments?id=eq."+b.dataset.delAtt,{method:"DELETE"}); loadAttachments(sessionId); }
+          catch(err){ alert("המחיקה נכשלה"); }
+        };
+      });
+    }catch(e){
+      el.innerHTML='<p style="font-size:12px;color:var(--err)">טעינת הקבצים נכשלה</p>';
+    }
   }
 
   async function toggleAttendance(sessionId, activityId){
