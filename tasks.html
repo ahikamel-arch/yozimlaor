@@ -133,15 +133,22 @@
       </div>
       <div class="dash-actions">
         <button class="btn-line" id="calViewToggle" style="width:auto;padding:8px 16px;font-size:13px">📋 תצוגת רשימה</button>
+        <button class="btn-line" id="calYearToggle" style="width:auto;padding:8px 16px;font-size:13px">📆 תצוגה שנתית</button>
         <button class="btn-ghost" id="refreshBtn2">↻ רענון</button>
         <button class="btn-ghost" id="logoutBtn2">התנתקות (<span class="who2"></span>)</button>
       </div>
     </div>
-    <div id="calGridNav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">
+    <div id="calGridNav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn-ghost" id="calPrevMonth">→ הקודם</button>
       <b id="calMonthLabel" style="font-size:16px;min-width:140px;text-align:center"></b>
       <button class="btn-ghost" id="calNextMonth">הבא ←</button>
       <button class="btn-ghost" id="calTodayBtn" style="font-size:13px">היום</button>
+      <button class="btn-line" id="calHebToggle" style="width:auto;padding:6px 14px;font-size:12px">📅 לפי חודש עברי</button>
+    </div>
+    <div id="calYearNav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">
+      <button class="btn-ghost" id="calPrevYear">→ הקודמת</button>
+      <b id="calYearLabel" style="font-size:18px;min-width:80px;text-align:center"></b>
+      <button class="btn-ghost" id="calNextYear">הבאה ←</button>
     </div>
     <div id="calArea"><p class="loading">טוען…</p></div>
   </section>
@@ -301,18 +308,49 @@
   let calEvents=[];
   let calView='list';
   let calMonth=new Date(); calMonth.setDate(1);
+  let hebMode=false;
+  let hebAnchor=new Date();
   const MONTH_NAMES=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+  const hebFullFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'});
+  const hebDayFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric'});
+  const hebMonthYearFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{month:'long',year:'numeric'});
+  function hebDateStr(d){ try{ return hebFullFmt.format(d); }catch(e){ return ""; } }
+  function hebDayNum(d){ try{ return hebDayFmt.format(d); }catch(e){ return ""; } }
+  function hebMonthKey(d){ try{ return hebMonthYearFmt.format(d); }catch(e){ return ""; } }
+  function isoOf(d){ return d.toISOString().slice(0,10); }
 
   $("refreshBtn2").onclick=loadCalendar;
   $("calViewToggle").onclick=()=>{
     calView = calView==='list' ? 'grid' : 'list';
     $("calViewToggle").textContent = calView==='list' ? '📋 תצוגת רשימה' : '🗓 תצוגת רשת';
     $("calGridNav").classList.toggle("hidden", calView!=='grid');
+    $("calYearNav").classList.add("hidden");
     renderCalendar();
   };
-  $("calPrevMonth").onclick=()=>{ calMonth.setMonth(calMonth.getMonth()-1); renderCalendar(); };
-  $("calNextMonth").onclick=()=>{ calMonth.setMonth(calMonth.getMonth()+1); renderCalendar(); };
-  $("calTodayBtn").onclick=()=>{ calMonth=new Date(); calMonth.setDate(1); renderCalendar(); };
+  $("calYearToggle").onclick=()=>{
+    calView = calView==='year' ? 'grid' : 'year';
+    $("calYearToggle").textContent = calView==='year' ? '🗓 תצוגת חודש' : '📆 תצוגה שנתית';
+    $("calGridNav").classList.toggle("hidden", calView!=='grid');
+    $("calYearNav").classList.toggle("hidden", calView!=='year');
+    renderCalendar();
+  };
+  $("calPrevYear").onclick=()=>{ calMonth.setFullYear(calMonth.getFullYear()-1); renderCalendar(); };
+  $("calNextYear").onclick=()=>{ calMonth.setFullYear(calMonth.getFullYear()+1); renderCalendar(); };
+  $("calHebToggle").onclick=()=>{
+    hebMode=!hebMode;
+    $("calHebToggle").textContent = hebMode ? '📅 לפי חודש לועזי' : '📅 לפי חודש עברי';
+    if(hebMode) hebAnchor=new Date(calMonth); else calMonth=new Date(hebAnchor.getFullYear(),hebAnchor.getMonth(),1);
+    renderCalendar();
+  };
+  $("calPrevMonth").onclick=()=>{
+    if(hebMode){ hebAnchor.setDate(hebAnchor.getDate()-30); } else { calMonth.setMonth(calMonth.getMonth()-1); }
+    renderCalendar();
+  };
+  $("calNextMonth").onclick=()=>{
+    if(hebMode){ hebAnchor.setDate(hebAnchor.getDate()+30); } else { calMonth.setMonth(calMonth.getMonth()+1); }
+    renderCalendar();
+  };
+  $("calTodayBtn").onclick=()=>{ calMonth=new Date(); calMonth.setDate(1); hebAnchor=new Date(); renderCalendar(); };
 
   async function loadCalendar(){
     $("calArea").innerHTML='<p class="loading">טוען…</p>';
@@ -323,9 +361,9 @@
         api("/content_items?publish_date=not.is.null&select=id,title,publish_date,type").catch(()=>[])
       ]);
       calEvents=[];
-      taskRows.forEach(t=>calEvents.push({date:t.due_date, type:"משימה", color:"#FBEAE6;color:#A34430", dot:"#B4442C", title:t.title+(t.assigned_to?" ("+t.assigned_to+")":"")}));
-      sessionRows.forEach(s=>calEvents.push({date:s.session_date, type:(s.activities?s.activities.type:"מפגש"), color:"#E3EEEA;color:#2C5952", dot:"#2C5952", title:(s.activities?s.activities.title:"")+(s.location?" · "+s.location:"")}));
-      contentRows.forEach(c=>calEvents.push({date:c.publish_date, type:c.type, color:"#FBF3E2;color:#8A6316", dot:"#C8933C", title:c.title}));
+      taskRows.forEach(t=>calEvents.push({date:t.due_date, type:"משימה", color:"#FBEAE6;color:#A34430", title:t.title+(t.assigned_to?" ("+t.assigned_to+")":"")}));
+      sessionRows.forEach(s=>calEvents.push({date:s.session_date, type:(s.activities?s.activities.type:"מפגש"), color:"#E3EEEA;color:#2C5952", title:(s.activities?s.activities.title:"")+(s.location?" · "+s.location:"")}));
+      contentRows.forEach(c=>calEvents.push({date:c.publish_date, type:c.type, color:"#FBF3E2;color:#8A6316", title:c.title}));
       calEvents.sort((a,b)=>a.date<b.date?-1:1);
       renderCalendar();
     }catch(e){
@@ -334,7 +372,50 @@
   }
 
   function renderCalendar(){
-    if(calView==='grid') renderCalendarGrid(); else renderCalendarList();
+    if(calView==='grid') renderCalendarGrid();
+    else if(calView==='year') renderCalendarYear();
+    else renderCalendarList();
+  }
+
+  function renderCalendarYear(){
+    const year=calMonth.getFullYear();
+    $("calYearLabel").textContent=year;
+    const byDate={};
+    calEvents.forEach(ev=>{ (byDate[ev.date]=byDate[ev.date]||[]).push(ev); });
+    const todayStr=isoOf(new Date());
+
+    let html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">';
+    for(let m=0;m<12;m++){
+      const first=new Date(year,m,1);
+      const daysInMonth=new Date(year,m+1,0).getDate();
+      const offset=first.getDay();
+      html+='<div class="card" style="padding:12px;cursor:pointer" data-jump-month="'+m+'">'+
+        '<p style="font-weight:700;font-size:14px;margin-bottom:8px;text-align:center;color:var(--primary)">'+MONTH_NAMES[m]+'</p>'+
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+      ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{ html+='<div style="text-align:center;font-size:9px;color:var(--ink-soft)">'+d+'</div>'; });
+      for(let i=0;i<offset;i++) html+='<div></div>';
+      for(let day=1;day<=daysInMonth;day++){
+        const dateStr=year+"-"+String(m+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+        const has=!!byDate[dateStr];
+        const isToday=dateStr===todayStr;
+        html+='<div style="text-align:center;font-size:9px;padding:2px 0;border-radius:3px;'+
+          (isToday?'background:var(--primary);color:#fff;font-weight:700;':(has?'background:var(--primary-soft);color:var(--primary);font-weight:700;':'color:var(--ink)'))+
+          '">'+day+'</div>';
+      }
+      html+='</div></div>';
+    }
+    html+='</div>';
+    $("calArea").innerHTML=html;
+    $("calArea").querySelectorAll('[data-jump-month]').forEach(card=>{
+      card.onclick=()=>{
+        calMonth=new Date(year, parseInt(card.dataset.jumpMonth,10), 1);
+        calView='grid';
+        $("calYearToggle").textContent='📆 תצוגה שנתית';
+        $("calYearNav").classList.add("hidden");
+        $("calGridNav").classList.remove("hidden");
+        renderCalendar();
+      };
+    });
   }
 
   function renderCalendarList(){
@@ -347,7 +428,8 @@
       if(ev.date!==currentDate){
         if(currentDate) html+="</div>";
         currentDate=ev.date;
-        html+='<div class="day-group"><div class="day-header">'+fmtDate(ev.date)+'</div>';
+        const hebStr=hebDateStr(new Date(ev.date+"T00:00:00"));
+        html+='<div class="day-group"><div class="day-header">'+fmtDate(ev.date)+(hebStr?' · <span style="font-weight:400;color:var(--ink-soft)">'+esc(hebStr)+'</span>':'')+'</div>';
       }
       html+='<div class="event-row"><span class="type-badge" style="background:'+ev.color+'">'+esc(ev.type)+'</span>'+esc(ev.title)+'</div>';
     });
@@ -356,33 +438,53 @@
   }
 
   function renderCalendarGrid(){
-    const year=calMonth.getFullYear(), month=calMonth.getMonth();
-    $("calMonthLabel").textContent = MONTH_NAMES[month]+" "+year;
+    let startDate, endDate, label;
+    if(hebMode){
+      const key=hebMonthKey(hebAnchor);
+      // סורקים אחורה למציאת תחילת החודש העברי
+      let s=new Date(hebAnchor);
+      while(hebMonthKey(new Date(s.getTime()-86400000))===key) s.setDate(s.getDate()-1);
+      // וקדימה למציאת סופו
+      let e=new Date(hebAnchor);
+      while(hebMonthKey(new Date(e.getTime()+86400000))===key) e.setDate(e.getDate()+1);
+      startDate=s; endDate=e; label=key;
+    } else {
+      const year=calMonth.getFullYear(), month=calMonth.getMonth();
+      startDate=new Date(year,month,1);
+      endDate=new Date(year,month+1,0);
+      label=MONTH_NAMES[month]+" "+year;
+    }
+    renderCalendarGridRange(startDate, endDate, label);
+  }
 
+  function renderCalendarGridRange(startDate, endDate, label){
+    $("calMonthLabel").textContent = label;
     const byDate={};
     calEvents.forEach(ev=>{ (byDate[ev.date]=byDate[ev.date]||[]).push(ev); });
-
-    const firstDay=new Date(year,month,1);
-    const startOffset=firstDay.getDay(); // 0=ראשון
-    const daysInMonth=new Date(year,month+1,0).getDate();
-    const todayStr=new Date().toISOString().slice(0,10);
+    const todayStr=isoOf(new Date());
+    const startOffset=startDate.getDay();
 
     let html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">';
     ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{
       html+='<div style="text-align:center;font-size:12px;font-weight:700;color:var(--primary);padding:4px">'+d+'</div>';
     });
     for(let i=0;i<startOffset;i++) html+='<div></div>';
-    for(let day=1;day<=daysInMonth;day++){
-      const dateStr=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+    let d=new Date(startDate);
+    while(d<=endDate){
+      const dateStr=isoOf(d);
       const dayEvents=byDate[dateStr]||[];
       const isToday=dateStr===todayStr;
-      html+='<div style="min-height:78px;border:1px solid var(--line);border-radius:8px;padding:5px;background:'+(isToday?'var(--primary-soft)':'#fff')+'">'+
-        '<div style="font-size:12px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--primary)':'var(--ink)')+';margin-bottom:3px">'+day+'</div>'+
+      html+='<div style="min-height:82px;border:1px solid var(--line);border-radius:8px;padding:5px;background:'+(isToday?'var(--primary-soft)':'#fff')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'+
+          '<span style="font-size:12px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--primary)':'var(--ink)')+'">'+d.getDate()+'</span>'+
+          '<span style="font-size:10px;color:var(--ink-soft)">'+hebDayNum(d)+'</span>'+
+        '</div>'+
         dayEvents.slice(0,3).map(ev=>
           '<div title="'+esc(ev.title)+'" style="font-size:10px;background:'+ev.color+';border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ev.title)+'</div>'
         ).join('')+
         (dayEvents.length>3?'<div style="font-size:10px;color:var(--ink-soft)">+'+(dayEvents.length-3)+' נוספים</div>':'')+
       '</div>';
+      d.setDate(d.getDate()+1);
     }
     html+='</div>';
     $("calArea").innerHTML = html;
