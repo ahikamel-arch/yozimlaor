@@ -1278,7 +1278,8 @@
     </div>
     <p id="cl-err" style="display:none;color:#B8664A;font-size:13px;margin-bottom:12px">ההתחברות נכשלה - בדקו מייל וסיסמה, או פנו לעמותה.</p>
     <button class="btn-setup-submit" id="cl-btn" onclick="communityLogin()">כניסה</button>
-    <button onclick="document.getElementById('screen-login').classList.remove('active');document.getElementById('screen-landing').classList.add('active')" style="width:100%;background:none;border:none;color:var(--mid);font-size:13px;margin-top:16px;cursor:pointer;font-family:'Heebo',sans-serif">חזרה</button>
+    <button onclick="forgotPassword()" style="width:100%;background:none;border:none;color:var(--sage-dark);font-size:13px;margin-top:12px;cursor:pointer;font-family:'Heebo',sans-serif;text-decoration:underline">שכחתי סיסמה</button>
+    <button onclick="document.getElementById('screen-login').classList.remove('active');document.getElementById('screen-landing').classList.add('active')" style="width:100%;background:none;border:none;color:var(--mid);font-size:13px;margin-top:8px;cursor:pointer;font-family:'Heebo',sans-serif">חזרה</button>
   </div>
 </div>
 
@@ -2012,6 +2013,22 @@ async function communityLogin(){
     document.getElementById('cl-err').style.display='block';
   }
   btn.disabled=false;
+}
+
+async function forgotPassword(){
+  const email = document.getElementById('cl-email').value.trim();
+  if(!email){ alert('נא למלא קודם את כתובת המייל בשדה למעלה, ואז ללחוץ שוב על "שכחתי סיסמה"'); return; }
+  try{
+    const res = await fetch(YL.SUPABASE_URL+"/auth/v1/recover",{
+      method:"POST",
+      headers:{apikey:YL.SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({email:email})
+    });
+    if(!res.ok) throw new Error();
+    alert('אם הכתובת הזו רשומה במערכת, נשלח אליה מייל עם קישור לקביעת סיסמה חדשה. יש לבדוק גם בספאם.');
+  }catch(e){
+    alert('השליחה נכשלה, נסה/י שוב בעוד רגע.');
+  }
 }
 
 async function submitSetPassword(){
