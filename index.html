@@ -87,16 +87,16 @@
 
     <div class="row2">
       <div class="field" id="f-phone">
-        <label>טלפון</label>
+        <label>טלפון <span class="req">*</span></label>
         <input id="phone" placeholder="050-1234567" inputmode="tel" dir="ltr">
+        <p class="errmsg">נא למלא מספר טלפון</p>
       </div>
       <div class="field" id="f-email">
-        <label>מייל</label>
+        <label>מייל <span class="req">*</span></label>
         <input id="email" placeholder="name@example.com" inputmode="email" dir="ltr">
-        <p class="errmsg">כתובת מייל לא תקינה</p>
+        <p class="errmsg">נא למלא כתובת מייל תקינה</p>
       </div>
     </div>
-    <p class="note" id="contactNote" style="margin:-12px 0 20px">נא למלא טלפון או מייל לפחות אחד מהם, כדי שנוכל לחזור אליך</p>
 
     <div class="field"><label>מגדר</label><div class="pills" id="genderPills"></div></div>
 
@@ -201,8 +201,9 @@
     let bad=false;
 
     if(!name){showErr("f-name");bad=true}
-    if(!phone && !email){showErr("f-phone");showErr("f-email");bad=true}
-    if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showErr("f-email","כתובת מייל לא תקינה");bad=true}
+    if(!phone){showErr("f-phone");bad=true}
+    if(!email){showErr("f-email","נא למלא כתובת מייל");bad=true}
+    else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showErr("f-email","כתובת מייל לא תקינה");bad=true}
     if(!consent){$("consentErr").style.display="block";bad=true}
 
     if(bad){
