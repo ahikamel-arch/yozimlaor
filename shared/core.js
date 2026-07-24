@@ -165,17 +165,39 @@ const YL = (function(){
     }
   }
 
+  async function myCalendarLink(){
+    const user = await getUser();
+    if(!user) return null;
+    const rows = await api("/persons?community_auth_user_id=eq."+user.id+"&select=calendar_feed_token");
+    if(!rows || !rows.length) return null;
+    return SUPABASE_URL+"/functions/v1/calendar-feed?token="+rows[0].calendar_feed_token;
+  }
+
+  async function showMyCalendarLink(){
+    try{
+      const link = await myCalendarLink();
+      if(!link){ alert("לא נמצא קישור אישי - יש לוודא שיש לך רשומת Person מקושרת (למשל דרך הזמנה קודמת)."); return; }
+      try{
+        await navigator.clipboard.writeText(link);
+        alert("קישור היומן האישי שלך הועתק! מדביקים אותו ב-Google Calendar (יומנים אחרים → הוספה לפי URL):\n\n"+link);
+      }catch(e){
+        alert("קישור היומן האישי שלך (להעתקה ידנית):\n\n"+link);
+      }
+    }catch(e){ alert("שליפת הקישור נכשלה: "+e.message.slice(0,150)); }
+  }
+
   // ═══ תפריט ניווט משותף בין כל דפי הצוות ═══
   function renderModuleNav(container, current){
     const modules=[
       {href:"referrals.html", label:"פניות"},
       {href:"activities.html", label:"פעילויות"},
       {href:"content.html", label:"תוכן"},
-      {href:"tasks.html", label:"משימות ולוח שנה"}
+      {href:"tasks.html", label:"משימות ולוח שנה"},
+      {href:"community.html", label:"רשת קהילתית"}
     ];
     container.innerHTML = modules.map(m=>
       '<a href="'+m.href+'"'+(current===m.href?' class="active"':'')+'>'+m.label+'</a>'
-    ).join('');
+    ).join('') + '<button type="button" onclick="YL.showMyCalendarLink()" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:10px 18px">📅 היומן שלי</button>';
     container.classList.remove("hidden");
   }
 
@@ -200,7 +222,7 @@ const YL = (function(){
   return {
     $, esc, fmtDate, fmtTime, fmtDT,
     isLoggedIn, whoami, login, logout, refreshSession, getUser,
-    setSessionFromTokens, setPassword, accessToken,
+    setSessionFromTokens, setPassword, accessToken, myCalendarLink, showMyCalendarLink,
     api, personPicker, renderModuleNav, callFunction, SUPABASE_URL, SUPABASE_KEY
   };
 })();
