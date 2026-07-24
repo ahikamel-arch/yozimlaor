@@ -317,7 +317,7 @@
   function hebDateStr(d){ try{ return hebFullFmt.format(d); }catch(e){ return ""; } }
   function hebDayNum(d){ try{ return hebDayFmt.format(d); }catch(e){ return ""; } }
   function hebMonthKey(d){ try{ return hebMonthYearFmt.format(d); }catch(e){ return ""; } }
-  function isoOf(d){ return d.toISOString().slice(0,10); }
+  function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
   $("refreshBtn2").onclick=loadCalendar;
   $("calViewToggle").onclick=()=>{
