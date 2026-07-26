@@ -207,13 +207,72 @@
             (p.region_hint?'<p><b>אזור:</b> '+esc(p.region_hint)+'</p>':"")+
             '<p><b>מקור:</b> '+esc(p.source||"—")+'</p>'+
             '<p><b>סטטוס קהילה:</b> '+esc(p.community_status||"לא קהילה")+'</p>'+
-            '<button type="button" class="btn-ghost" data-edit="'+p.id+'" style="margin-top:8px">✏ עריכה</button>';
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+              '<button type="button" class="btn-ghost" data-edit="'+p.id+'">✏ עריכה</button>'+
+              '<button type="button" class="btn-line" data-add-referral="'+p.id+'" style="width:auto;padding:8px 16px;font-size:13px">➕ יצירת פנייה</button>'+
+              '<button type="button" class="btn-line" data-toggle-group="'+p.id+'" style="width:auto;padding:8px 16px;font-size:13px">➕ הוספה לקבוצה</button>'+
+              '<button type="button" class="del" data-delete="'+p.id+'">🗑 מחיקה לגמרי</button>'+
+            '</div>'+
+            '<div class="hidden row2" data-group-picker="'+p.id+'" style="margin-top:10px">'+
+              '<select data-group-select="'+p.id+'"><option value="">טוען קבוצות…</option></select>'+
+              '<button type="button" class="btn" data-confirm-group="'+p.id+'" style="width:auto;padding:8px 16px">הוספה</button>'+
+            '</div>';
         }
         html+='</td></tr>';
       }
     });
     html+="</tbody></table></div>";
     area.innerHTML=html;
+
+    area.querySelectorAll("[data-add-referral]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("ליצור פנייה חדשה (ריקה, לעריכה בהמשך) עבור האדם הזה?")) return;
+        try{
+          await api("/referrals",{method:"POST",body:JSON.stringify({person_id:btn.dataset.addReferral, status:"לא נוצר קשר"})});
+          alert("נוצרה פנייה - אפשר לערוך פרטים מלאים ב-referrals.html");
+        }catch(e){ alert("היצירה נכשלה: "+e.message.slice(0,200)); }
+      };
+    });
+    area.querySelectorAll("[data-toggle-group]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const pid=btn.dataset.toggleGroup;
+        const picker=area.querySelector('[data-group-picker="'+pid+'"]');
+        picker.classList.toggle("hidden");
+        if(!picker.classList.contains("hidden")){
+          try{
+            const acts=await api("/activities?select=id,title,type&order=created_at.desc");
+            area.querySelector('[data-group-select="'+pid+'"]').innerHTML=
+              acts.map(a=>'<option value="'+a.id+'">'+esc(a.type+" - "+a.title)+'</option>').join('');
+          }catch(e){ alert("טעינת רשימת הקבוצות נכשלה - יש לוודא הרשאה למודול הפעילויות"); }
+        }
+      };
+    });
+    area.querySelectorAll("[data-confirm-group]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const pid=btn.dataset.confirmGroup;
+        const activityId=area.querySelector('[data-group-select="'+pid+'"]').value;
+        if(!activityId) return;
+        try{
+          await api("/activity_members?on_conflict=activity_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({activity_id:activityId, person_id:pid})});
+          alert("נוסף/ה לקבוצה בהצלחה - ניהול מלא ב-activities.html");
+          area.querySelector('[data-group-picker="'+pid+'"]').classList.add("hidden");
+        }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,200)); }
+      };
+    });
+    area.querySelectorAll("[data-delete]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("למחוק את האדם הזה לגמרי מהמערכת - כולל כל הפניות, תפקידים, שיוך לקבוצות, וחשבון קהילה אם קיים? פעולה בלתי הפיכה.")) return;
+        btn.disabled=true; btn.textContent="מוחק…";
+        try{
+          await YL.callFunction("delete-person-fully",{person_id:btn.dataset.delete});
+          loadPeople();
+        }catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,250)); btn.disabled=false; btn.textContent="🗑 מחיקה לגמרי"; }
+      };
+    });
 
     area.querySelectorAll("[data-row]").forEach(row=>{
       row.onclick=()=>{ expanded=(expanded===row.dataset.row)?null:row.dataset.row; editingId=null; render(); };
