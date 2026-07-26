@@ -178,6 +178,7 @@
       return;
     }
     $("viewLock").classList.add("hidden");
+    $("viewInitLoading").classList.add("hidden");
     $("viewNoAccess").classList.add("hidden");
     $("mainNav").classList.remove("hidden");
     document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=YL.whoami()||"");
