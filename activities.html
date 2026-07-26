@@ -429,120 +429,149 @@
     }
   }
 
+  const selectedSessionByActivity = {};
+
   function renderSessions(activityId, area, sessions){
     const act = activities.find(a=>a.id===activityId) || {};
-    let html = sessions.map(s=>
-      '<div class="session-row" data-session="'+s.id+'">'+
-        '<div class="row2" style="margin-bottom:6px">'+
-          '<div><label style="font-size:11px;color:var(--ink-soft)">תאריך המפגש</label><input type="date" data-session-date="'+s.id+'" value="'+(s.session_date||'')+'"></div>'+
-          '<div><label style="font-size:11px;color:var(--ink-soft)">מקום</label><input data-session-loc="'+s.id+'" value="'+esc(s.location||'')+'" placeholder="מקום"></div>'+
-        '</div>'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-          '<button type="button" class="btn-ghost" data-save-datetime="'+s.id+'" style="font-size:12px">💾 שמירת תאריך/מקום</button>'+
-          '<div style="display:flex;gap:6px">'+
-            '<button type="button" class="btn-ghost" data-attend-toggle="'+s.id+'" data-activity="'+activityId+'" style="font-size:12px">ניהול נוכחות</button>'+
-            '<button type="button" class="del" data-delete-session="'+s.id+'" style="font-size:12px;padding:6px 10px">🗑</button>'+
-          '</div>'+
-        '</div>'+
-        (s.notes?'<p style="font-size:13px;color:var(--ink-soft);margin-top:6px">'+esc(s.notes)+'</p>':'')+
-        '<div class="field" style="margin-top:10px;margin-bottom:4px"><label style="font-size:12px">משוב מנחה על המפגש</label>'+
-          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea></div>'+
-        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">אתגרים שעלו</label>'+
-          '<textarea rows="2" data-challenges="'+s.id+'" placeholder="קשיים, מתחים, נושאים שדרשו התייחסות…">'+esc(s.challenges||"")+'</textarea></div>'+
-        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">תגובות/משוב מהמשתתפים</label>'+
-          '<textarea rows="2" data-pfeedback="'+s.id+'" placeholder="מה עלה משיחות עם המשתתפים, וואטסאפ אחרי המפגש וכו׳…">'+esc(s.participant_feedback||"")+'</textarea></div>'+
-        '<button type="button" class="btn-ghost" data-save-feedback="'+s.id+'" style="margin-bottom:10px;font-size:12px">שמירת פרטי המפגש</button>'+
-        '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">קבצים מצורפים (צילומי מסך וואטסאפ וכו׳)</label>'+
-          '<div data-attachments-list="'+s.id+'" style="margin-bottom:6px"><p style="font-size:12px;color:var(--ink-soft)">טוען…</p></div>'+
-          '<input type="file" data-file-input="'+s.id+'" accept="image/*,.pdf" style="margin-bottom:6px">'+
-          '<button type="button" class="btn-ghost" data-upload="'+s.id+'" data-activity="'+activityId+'" style="font-size:12px">📎 העלאת קובץ</button>'+
-        '</div>'+
-        '<div class="hidden" data-attend-area="'+s.id+'"></div>'+
-      '</div>'
-    ).join('');
 
-    html += '<div style="margin-top:12px;padding:12px;border:1px dashed var(--line);border-radius:10px">'+
-      '<p style="font-size:13px;font-weight:700;margin-bottom:8px">🗓 יצירת מפגשים אוטומטית'+
-        (act.day_of_week?' (כל יום '+act.day_of_week+(act.frequency?', '+act.frequency:'')+')':' (לא הוגדר יום קבוע לפעילות - אפשר עדיין לבחור תאריך התחלה)')+'</p>'+
-      '<div class="row2" style="margin-bottom:8px">'+
-        '<input type="date" data-gen-start="'+activityId+'">'+
-        '<input inputmode="numeric" data-gen-count="'+activityId+'" placeholder="כמה מפגשים ליצור" value="'+(act.planned_session_count||'')+'">'+
+    if(!sessions.length){
+      area.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px">אין עדיין מפגשים.</p>' + genToolsHtml(activityId, act);
+      wireGenTools(activityId, area, act);
+      return;
+    }
+
+    if(!selectedSessionByActivity[activityId] || !sessions.some(s=>s.id===selectedSessionByActivity[activityId])){
+      const todayStr=new Date().toISOString().slice(0,10);
+      const upcoming=sessions.find(s=>s.session_date && s.session_date>=todayStr);
+      selectedSessionByActivity[activityId] = upcoming ? upcoming.id : sessions[sessions.length-1].id;
+    }
+    const selId = selectedSessionByActivity[activityId];
+
+    let html = '<div class="field" style="margin-bottom:12px"><label style="font-size:12px">בחירת מפגש</label>'+
+      '<select data-sess-select="'+activityId+'">'+
+        sessions.map(s=>'<option value="'+s.id+'"'+(s.id===selId?' selected':'')+'>'+(s.session_date?fmtDate(s.session_date):'ללא תאריך')+(s.location?' · '+esc(s.location):'')+'</option>').join('')+
+      '</select></div>'+
+      '<div data-sess-panel="'+activityId+'"></div>'+
+      genToolsHtml(activityId, act);
+
+    area.innerHTML = html;
+
+    area.querySelector('[data-sess-select="'+activityId+'"]').onchange = function(){
+      selectedSessionByActivity[activityId] = this.value;
+      renderSessionPanel(activityId, area, sessions.find(s=>s.id===this.value));
+    };
+    renderSessionPanel(activityId, area, sessions.find(s=>s.id===selId));
+    wireGenTools(activityId, area, act);
+  }
+
+  function genToolsHtml(activityId, act){
+    return '<details style="margin-top:16px"><summary style="cursor:pointer;color:var(--primary);font-size:13px;font-weight:700">כלים נוספים ליצירת מפגשים</summary>'+
+      '<div style="margin-top:12px;padding:12px;border:1px dashed var(--line);border-radius:10px">'+
+        '<p style="font-size:13px;font-weight:700;margin-bottom:8px">🗓 יצירת מפגשים אוטומטית'+
+          (act.day_of_week?' (כל יום '+act.day_of_week+(act.frequency?', '+act.frequency:'')+')':' (לא הוגדר יום קבוע לפעילות)')+'</p>'+
+        '<div class="row2" style="margin-bottom:8px">'+
+          '<input type="date" data-gen-start="'+activityId+'">'+
+          '<input inputmode="numeric" data-gen-count="'+activityId+'" placeholder="כמה מפגשים ליצור" value="'+(act.planned_session_count||'')+'">'+
+        '</div>'+
+        '<button type="button" class="btn-line" data-generate-sessions="'+activityId+'" style="padding:8px 16px;font-size:13px">יצירת המפגשים</button>'+
       '</div>'+
-      '<button type="button" class="btn-line" data-generate-sessions="'+activityId+'" style="padding:8px 16px;font-size:13px">יצירת המפגשים</button>'+
-    '</div>';
+      '<div style="margin-top:12px"><p style="font-size:13px;font-weight:700;margin-bottom:8px">או הוספת מפגש בודד</p>'+
+        '<div class="row2" style="margin-bottom:8px">'+
+          '<input type="date" data-new-session-date="'+activityId+'">'+
+          '<input placeholder="מקום (אופציונלי)" data-new-session-loc="'+activityId+'">'+
+        '</div>'+
+        '<button type="button" class="btn-line" data-add-session="'+activityId+'" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button>'+
+      '</div></details>';
+  }
 
-    html += '<div style="margin-top:12px"><p style="font-size:13px;font-weight:700;margin-bottom:8px">או הוספת מפגש בודד</p><div class="row2" style="margin-bottom:8px">'+
-      '<input type="date" data-new-session-date="'+activityId+'">'+
-      '<input placeholder="מקום (אופציונלי)" data-new-session-loc="'+activityId+'">'+
-      '</div><button type="button" class="btn-line" data-add-session="'+activityId+'" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button></div>';
+  function renderSessionPanel(activityId, area, s){
+    const panel = area.querySelector('[data-sess-panel="'+activityId+'"]');
+    if(!panel || !s) return;
+    panel.innerHTML =
+      '<div class="row2" style="margin-bottom:6px">'+
+        '<div><label style="font-size:11px;color:var(--ink-soft)">תאריך המפגש</label><input type="date" data-session-date value="'+(s.session_date||'')+'"></div>'+
+        '<div><label style="font-size:11px;color:var(--ink-soft)">מקום</label><input data-session-loc value="'+esc(s.location||'')+'" placeholder="מקום"></div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+        '<button type="button" class="btn-ghost" data-save-datetime style="font-size:12px">💾 שמירת תאריך/מקום</button>'+
+        '<button type="button" class="del" data-delete-session style="font-size:12px;padding:6px 10px">🗑 מחיקת המפגש</button>'+
+      '</div>'+
+      (s.notes?'<p style="font-size:13px;color:var(--ink-soft);margin-bottom:8px">'+esc(s.notes)+'</p>':'')+
+      '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">משוב מנחה על המפגש</label>'+
+        '<textarea rows="2" data-feedback placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea></div>'+
+      '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">אתגרים שעלו</label>'+
+        '<textarea rows="2" data-challenges placeholder="קשיים, מתחים, נושאים שדרשו התייחסות…">'+esc(s.challenges||"")+'</textarea></div>'+
+      '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">תגובות/משוב מהמשתתפים</label>'+
+        '<textarea rows="2" data-pfeedback placeholder="מה עלה משיחות עם המשתתפים, וואטסאפ אחרי המפגש וכו׳…">'+esc(s.participant_feedback||"")+'</textarea></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+
+        '<button type="button" class="btn-ghost" data-save-feedback style="font-size:12px">שמירת פרטי המפגש</button>'+
+        '<span data-fb-status style="font-size:12px;color:#256B33;font-weight:700;display:none">✓ נשמר בהצלחה</span>'+
+      '</div>'+
+      '<div class="field" style="margin-bottom:16px"><label style="font-size:12px">קבצים מצורפים (צילומי מסך וואטסאפ וכו׳)</label>'+
+        '<div data-attachments-list style="margin-bottom:6px"><p style="font-size:12px;color:var(--ink-soft)">טוען…</p></div>'+
+        '<input type="file" data-file-input accept="image/*,.pdf" style="margin-bottom:6px">'+
+        '<button type="button" class="btn-ghost" data-upload style="font-size:12px">📎 העלאת קובץ</button>'+
+      '</div>'+
+      '<div><p style="font-size:12px;color:var(--mid);margin-bottom:6px">ניהול נוכחות</p><div data-attend-area><p class="loading">טוען…</p></div></div>';
 
-    area.innerHTML = sessions.length ? html : (
-      '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:8px">אין עדיין מפגשים.</p>' + html
-    );
+    loadAttachments(s.id, panel.querySelector('[data-attachments-list]'));
 
-    sessions.forEach(s=>loadAttachments(s.id));
+    panel.querySelector('[data-save-datetime]').onclick = async function(){
+      const btn=this;
+      btn.disabled=true; btn.textContent="שומר…";
+      try{
+        await api("/activity_sessions?id=eq."+s.id,{method:"PATCH",body:JSON.stringify({
+          session_date: panel.querySelector('[data-session-date]').value||null,
+          location: panel.querySelector('[data-session-loc]').value.trim()||null
+        })});
+        loadSessions(activityId);
+      }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="💾 שמירת תאריך/מקום"; }
+    };
+    panel.querySelector('[data-delete-session]').onclick = async function(){
+      if(!confirm("למחוק את המפגש הזה (כולל נוכחות ומשוב שנרשמו בו)?")) return;
+      try{ await api("/activity_sessions?id=eq."+s.id,{method:"DELETE"}); delete selectedSessionByActivity[activityId]; loadSessions(activityId); }
+      catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,150)); }
+    };
+    panel.querySelector('[data-save-feedback]').onclick = async function(){
+      const btn=this, statusEl=panel.querySelector('[data-fb-status]');
+      btn.disabled=true; btn.textContent="שומר…"; statusEl.style.display="none";
+      try{
+        await api("/activity_sessions?id=eq."+s.id,{method:"PATCH",body:JSON.stringify({
+          facilitator_feedback: panel.querySelector('[data-feedback]').value,
+          challenges: panel.querySelector('[data-challenges]').value,
+          participant_feedback: panel.querySelector('[data-pfeedback]').value
+        })});
+        btn.textContent="שמירת פרטי המפגש"; btn.disabled=false;
+        statusEl.style.display="inline";
+        setTimeout(()=>{statusEl.style.display="none";},2500);
+      }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="שמירת פרטי המפגש"; }
+    };
+    panel.querySelector('[data-upload]').onclick = async function(){
+      const btn=this;
+      const fileInput=panel.querySelector('[data-file-input]');
+      const file=fileInput.files[0];
+      if(!file){ alert("נא לבחור קובץ קודם"); return; }
+      btn.disabled=true; btn.textContent="מעלה…";
+      try{
+        await uploadSessionFile(activityId, s.id, file);
+        fileInput.value="";
+        loadAttachments(s.id, panel.querySelector('[data-attachments-list]'));
+      }catch(e){ alert("ההעלאה נכשלה: "+e.message.slice(0,200)); }
+      btn.disabled=false; btn.textContent="📎 העלאת קובץ";
+    };
 
-    area.querySelectorAll('[data-save-datetime]').forEach(btn=>{
-      btn.onclick=async ()=>{
-        const sid=btn.dataset.saveDatetime;
-        btn.disabled=true; btn.textContent="שומר…";
-        try{
-          await api("/activity_sessions?id=eq."+sid,{method:"PATCH",body:JSON.stringify({
-            session_date: area.querySelector('[data-session-date="'+sid+'"]').value||null,
-            location: area.querySelector('[data-session-loc="'+sid+'"]').value.trim()||null
-          })});
-          btn.textContent="נשמר ✓";
-          setTimeout(()=>{btn.textContent="💾 שמירת תאריך/מקום";btn.disabled=false;},1200);
-        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="💾 שמירת תאריך/מקום"; }
-      };
-    });
-    area.querySelectorAll('[data-delete-session]').forEach(btn=>{
-      btn.onclick=async ()=>{
-        if(!confirm("למחוק את המפגש הזה (כולל נוכחות ומשוב שנרשמו בו)?")) return;
-        try{ await api("/activity_sessions?id=eq."+btn.dataset.deleteSession,{method:"DELETE"}); loadSessions(activityId); }
-        catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,150)); }
-      };
-    });
-    area.querySelectorAll('[data-attend-toggle]').forEach(btn=>{
-      btn.onclick=()=>toggleAttendance(btn.dataset.attendToggle, btn.dataset.activity);
-    });
-    area.querySelectorAll('[data-save-feedback]').forEach(btn=>{
-      btn.onclick=async ()=>{
-        const sid=btn.dataset.saveFeedback;
-        btn.disabled=true; btn.textContent="שומר…";
-        try{
-          await api("/activity_sessions?id=eq."+sid,{method:"PATCH",body:JSON.stringify({
-            facilitator_feedback: area.querySelector('[data-feedback="'+sid+'"]').value,
-            challenges: area.querySelector('[data-challenges="'+sid+'"]').value,
-            participant_feedback: area.querySelector('[data-pfeedback="'+sid+'"]').value
-          })});
-          btn.textContent="נשמר ✓";
-          setTimeout(()=>{btn.textContent="שמירת פרטי המפגש";btn.disabled=false;},1500);
-        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,150)); btn.disabled=false; btn.textContent="שמירת פרטי המפגש"; }
-      };
-    });
-    area.querySelectorAll('[data-upload]').forEach(btn=>{
-      btn.onclick=async ()=>{
-        const sid=btn.dataset.upload, actId=btn.dataset.activity;
-        const fileInput=area.querySelector('[data-file-input="'+sid+'"]');
-        const file=fileInput.files[0];
-        if(!file){ alert("נא לבחור קובץ קודם"); return; }
-        btn.disabled=true; btn.textContent="מעלה…";
-        try{
-          await uploadSessionFile(actId, sid, file);
-          fileInput.value="";
-          loadAttachments(sid);
-        }catch(e){ alert("ההעלאה נכשלה: "+e.message.slice(0,200)); }
-        btn.disabled=false; btn.textContent="📎 העלאת קובץ";
-      };
-    });
+    toggleAttendance(s.id, activityId, panel.querySelector('[data-attend-area]'));
+  }
+
+  function wireGenTools(activityId, area, act){
     const addBtn=area.querySelector('[data-add-session="'+activityId+'"]');
     if(addBtn) addBtn.onclick=async ()=>{
       const date=area.querySelector('[data-new-session-date="'+activityId+'"]').value;
       const loc=area.querySelector('[data-new-session-loc="'+activityId+'"]').value.trim();
       addBtn.disabled=true;
       try{
-        await api("/activity_sessions",{method:"POST",body:JSON.stringify({activity_id:activityId, session_date:date||null, location:loc||null})});
+        const created=await api("/activity_sessions",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({activity_id:activityId, session_date:date||null, location:loc||null})});
+        if(created && created[0]) selectedSessionByActivity[activityId]=created[0].id;
         loadSessions(activityId);
       }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,150)); }
       addBtn.disabled=false;
@@ -581,8 +610,7 @@
     })});
   }
 
-  async function loadAttachments(sessionId){
-    const el=document.querySelector('[data-attachments-list="'+sessionId+'"]');
+  async function loadAttachments(sessionId, el){
     if(!el) return;
     try{
       const rows=await api("/session_attachments?session_id=eq."+sessionId+"&order=created_at.desc");
@@ -607,7 +635,7 @@
         b.onclick=async (e)=>{
           e.stopPropagation();
           if(!confirm("למחוק את הקובץ?")) return;
-          try{ await api("/session_attachments?id=eq."+b.dataset.delAtt,{method:"DELETE"}); loadAttachments(sessionId); }
+          try{ await api("/session_attachments?id=eq."+b.dataset.delAtt,{method:"DELETE"}); loadAttachments(sessionId, el); }
           catch(err){ alert("המחיקה נכשלה"); }
         };
       });
@@ -616,11 +644,8 @@
     }
   }
 
-  async function toggleAttendance(sessionId, activityId){
-    const area=document.querySelector('[data-attend-area="'+sessionId+'"]');
+  async function toggleAttendance(sessionId, activityId, area){
     if(!area) return;
-    if(!area.classList.contains("hidden")){ area.classList.add("hidden"); return; }
-    area.classList.remove("hidden");
     area.innerHTML='<p class="loading" style="padding:10px 0">טוען…</p>';
     try{
       const [roster, current] = await Promise.all([
