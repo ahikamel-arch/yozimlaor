@@ -28,7 +28,13 @@
 <main>
 
   <!-- ══ כניסה ══ -->
-  <section id="viewLock">
+  <section id="viewInitLoading">
+    <div class="card tiny" style="text-align:center">
+      <p class="loading">טוען…</p>
+    </div>
+  </section>
+
+  <section id="viewLock" class="hidden">
     <div class="card tiny">
       <div class="lock-icon">🔒</div>
       <h2 style="font-size:20px;margin-bottom:4px">כניסת צוות</h2>
@@ -160,7 +166,7 @@
   // ═══ ניווט בין מסכים ═══
   async function showApp(){
     const user = await YL.getUser();
-    if(!user){ $("viewLock").classList.remove("hidden"); return; }
+    if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
     YL.renderModuleNav($("moduleNav"), "referrals.html");
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
@@ -797,6 +803,8 @@
       const ok=await YL.refreshSession();
       if(ok){ showApp(); return; }
     }
+    $("viewInitLoading").classList.add("hidden");
+    $("viewLock").classList.remove("hidden");
   })();
 })();
 </script>
