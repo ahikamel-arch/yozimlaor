@@ -476,10 +476,7 @@
         '<button type="button" class="btn-line" data-generate-sessions="'+activityId+'" style="padding:8px 16px;font-size:13px">יצירת המפגשים</button>'+
       '</div>'+
       '<div style="margin-top:12px"><p style="font-size:13px;font-weight:700;margin-bottom:8px">או הוספת מפגש בודד</p>'+
-        '<div class="row2" style="margin-bottom:8px">'+
-          '<input type="date" data-new-session-date="'+activityId+'">'+
-          '<input placeholder="מקום (אופציונלי)" data-new-session-loc="'+activityId+'">'+
-        '</div>'+
+        '<input type="date" data-new-session-date="'+activityId+'" style="margin-bottom:8px">'+
         '<button type="button" class="btn-line" data-add-session="'+activityId+'" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button>'+
       '</div></details>';
   }
@@ -488,14 +485,14 @@
     const panel = area.querySelector('[data-sess-panel="'+activityId+'"]');
     if(!panel || !s) return;
     panel.innerHTML =
-      '<div class="row2" style="margin-bottom:6px">'+
-        '<div><label style="font-size:11px;color:var(--ink-soft)">תאריך המפגש</label><input type="date" data-session-date value="'+(s.session_date||'')+'"></div>'+
-        '<div><label style="font-size:11px;color:var(--ink-soft)">מקום</label><input data-session-loc value="'+esc(s.location||'')+'" placeholder="מקום"></div>'+
-      '</div>'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+      '<details style="margin-bottom:12px"><summary style="cursor:pointer;color:var(--ink-soft);font-size:12px">🗓 שינוי תאריך המפגש הזה</summary>'+
+        '<div class="row2" style="margin-top:8px;margin-bottom:6px">'+
+          '<div><label style="font-size:11px;color:var(--ink-soft)">תאריך המפגש</label><input type="date" data-session-date value="'+(s.session_date||'')+'"></div>'+
+          '<div><label style="font-size:11px;color:var(--ink-soft)">מקום (רק אם שונה מהרגיל)</label><input data-session-loc value="'+esc(s.location||'')+'" placeholder="מקום"></div>'+
+        '</div>'+
         '<button type="button" class="btn-ghost" data-save-datetime style="font-size:12px">💾 שמירת תאריך/מקום</button>'+
-        '<button type="button" class="del" data-delete-session style="font-size:12px;padding:6px 10px">🗑 מחיקת המפגש</button>'+
-      '</div>'+
+      '</details>'+
+      '<div style="text-align:left;margin-bottom:10px"><button type="button" class="del" data-delete-session style="font-size:12px;padding:6px 10px">🗑 מחיקת המפגש</button></div>'+
       (s.notes?'<p style="font-size:13px;color:var(--ink-soft);margin-bottom:8px">'+esc(s.notes)+'</p>':'')+
       '<div class="field" style="margin-bottom:4px"><label style="font-size:12px">משוב מנחה על המפגש</label>'+
         '<textarea rows="2" data-feedback placeholder="איך הלך המפגש, דגשים, נוכחות מיוחדת…">'+esc(s.facilitator_feedback||"")+'</textarea></div>'+
@@ -567,10 +564,9 @@
     const addBtn=area.querySelector('[data-add-session="'+activityId+'"]');
     if(addBtn) addBtn.onclick=async ()=>{
       const date=area.querySelector('[data-new-session-date="'+activityId+'"]').value;
-      const loc=area.querySelector('[data-new-session-loc="'+activityId+'"]').value.trim();
       addBtn.disabled=true;
       try{
-        const created=await api("/activity_sessions",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({activity_id:activityId, session_date:date||null, location:loc||null})});
+        const created=await api("/activity_sessions",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({activity_id:activityId, session_date:date||null, location:act.city||null})});
         if(created && created[0]) selectedSessionByActivity[activityId]=created[0].id;
         loadSessions(activityId);
       }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,150)); }
