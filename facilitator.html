@@ -43,15 +43,19 @@
     </div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h2 style="font-size:17px">מפגשים</h2>
+      <h2 style="font-size:17px;margin-bottom:12px">מפגשים</h2>
+      <div class="field" style="margin-bottom:16px">
+        <label>בחירת תאריך מפגש</label>
+        <select id="sessSelect"><option value="">טוען…</option></select>
       </div>
-      <div class="row2" style="margin-bottom:8px">
-        <input type="date" id="newSessDate">
-        <input placeholder="מקום (אופציונלי)" id="newSessLoc">
-      </div>
-      <button class="btn-line" id="addSessBtn" style="padding:8px 16px;font-size:13px;margin-bottom:16px">+ הוספת מפגש חדש</button>
-      <div id="sessionsArea"><p class="loading">טוען…</p></div>
+      <div id="sessionsArea"></div>
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer;color:var(--sage-dark);font-size:13px">מפגש חדש שעוד לא ברשימה?</summary>
+        <div style="margin-top:10px">
+          <input type="date" id="newSessDate" style="margin-bottom:8px">
+          <button class="btn-line" id="addSessBtn" style="padding:8px 16px;font-size:13px">+ הוספת מפגש</button>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -85,7 +89,7 @@
       if(!acts || !acts.length){ showInvalid(); return; }
       const act = acts[0];
       $("actTitle").textContent = act.title;
-      $("actMeta").textContent = act.type + (act.audience ? " · "+act.audience : "");
+      $("actMeta").textContent = act.type + (act.audience ? " · "+act.audience : "") + (act.city ? " · 📍 "+act.city : "");
       $("viewLoading").classList.add("hidden");
       $("viewApp").classList.remove("hidden");
       await loadRoster();
@@ -108,59 +112,79 @@
     }
   }
 
+  let allSessions = [];
+  let selectedSessionId = null;
+
   async function loadSessions(){
-    $("sessionsArea").innerHTML = '<p class="loading">טוען…</p>';
+    $("sessSelect").innerHTML = '<option value="">טוען…</option>';
     try{
-      const sessions = await rpc("facilitator_get_sessions",{p_token:token});
-      renderSessions(sessions);
+      allSessions = await rpc("facilitator_get_sessions",{p_token:token});
+      renderSessionSelect();
     }catch(e){
-      $("sessionsArea").innerHTML = '<p style="color:var(--err);font-size:13px">טעינת המפגשים נכשלה</p>';
+      $("sessSelect").innerHTML = '<option value="">טעינה נכשלה</option>';
     }
   }
 
-  function renderSessions(sessions){
-    const area = $("sessionsArea");
-    if(!sessions.length){
-      area.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין מפגשים. אפשר להוסיף למעלה.</p>';
+  function renderSessionSelect(){
+    if(!allSessions.length){
+      $("sessSelect").innerHTML = '<option value="">אין עדיין מפגשים - הוסיפו למטה</option>';
+      $("sessionsArea").innerHTML = '';
       return;
     }
-    area.innerHTML = sessions.map(s=>
-      '<div class="session-row" data-session="'+s.id+'">'+
-        '<b>'+(s.session_date?fmtDate(s.session_date):'ללא תאריך')+'</b>'+(s.location?' · '+esc(s.location):'')+
-        '<div class="field" style="margin-top:10px;margin-bottom:6px"><label style="font-size:12px">משוב על המפגש</label>'+
-          '<textarea rows="2" data-feedback="'+s.id+'" placeholder="איך הלך, דגשים…">'+esc(s.facilitator_feedback||"")+'</textarea>'+
-          '<button type="button" class="btn-ghost" data-save-fb="'+s.id+'" style="margin-top:4px;font-size:12px">שמירת משוב</button></div>'+
-        '<button type="button" class="btn-ghost" data-attend="'+s.id+'" style="font-size:12px">סימון נוכחות</button>'+
-        '<div class="hidden" data-attend-area="'+s.id+'" style="margin-top:10px"></div>'+
-      '</div>'
+    $("sessSelect").innerHTML = allSessions.map(s=>
+      '<option value="'+s.id+'">'+(s.session_date?fmtDate(s.session_date):'ללא תאריך')+'</option>'
     ).join('');
-
-    area.querySelectorAll('[data-save-fb]').forEach(btn=>{
-      btn.onclick=async ()=>{
-        const sid=btn.dataset.saveFb;
-        const val=area.querySelector('[data-feedback="'+sid+'"]').value;
-        btn.disabled=true; btn.textContent="שומר…";
-        try{
-          await rpc("facilitator_save_feedback",{p_token:token, p_session_id:sid, p_feedback:val});
-          btn.textContent="נשמר ✓"; setTimeout(()=>{btn.textContent="שמירת משוב";btn.disabled=false;},1500);
-        }catch(e){ alert("השמירה נכשלה"); btn.disabled=false; btn.textContent="שמירת משוב"; }
-      };
-    });
-    area.querySelectorAll('[data-attend]').forEach(btn=>{
-      btn.onclick=()=>toggleAttendance(btn.dataset.attend);
-    });
+    // בררת מחדל: המפגש הקרוב ביותר לתאריך היום, או האחרון ברשימה אם כולם עברו
+    if(!selectedSessionId || !allSessions.some(s=>s.id===selectedSessionId)){
+      const todayStr=new Date().toISOString().slice(0,10);
+      const upcoming=allSessions.find(s=>s.session_date && s.session_date>=todayStr);
+      selectedSessionId = upcoming ? upcoming.id : allSessions[allSessions.length-1].id;
+    }
+    $("sessSelect").value = selectedSessionId;
+    renderSessionPanel();
   }
 
-  async function toggleAttendance(sessionId){
-    const area = document.querySelector('[data-attend-area="'+sessionId+'"]');
-    if(!area) return;
-    if(!area.classList.contains("hidden")){ area.classList.add("hidden"); return; }
-    area.classList.remove("hidden");
-    area.innerHTML = '<p class="loading">טוען…</p>';
+  $("sessSelect").addEventListener("change", function(){
+    selectedSessionId = this.value;
+    renderSessionPanel();
+  });
+
+  function renderSessionPanel(){
+    const area = $("sessionsArea");
+    const s = allSessions.find(x=>x.id===selectedSessionId);
+    if(!s){ area.innerHTML=''; return; }
+    area.innerHTML =
+      '<div class="field" style="margin-top:6px;margin-bottom:6px"><label style="font-size:12px">משוב על המפגש</label>'+
+        '<textarea rows="3" id="fbText">'+esc(s.facilitator_feedback||"")+'</textarea>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'+
+          '<button type="button" class="btn-ghost" id="saveFbBtn" style="font-size:12px">שמירת משוב</button>'+
+          '<span id="fbStatus" style="font-size:12px;color:#256B33;font-weight:700;display:none">✓ נשמר בהצלחה</span>'+
+        '</div></div>'+
+      '<div style="margin-top:10px"><p style="font-size:12px;color:var(--mid);margin-bottom:6px">נוכחות</p>'+
+        '<div id="attendArea"><p class="loading">טוען…</p></div></div>';
+
+    $("saveFbBtn").onclick = async function(){
+      const btn=this, statusEl=$("fbStatus");
+      btn.disabled=true; btn.textContent="שומר…"; statusEl.style.display="none";
+      try{
+        await rpc("facilitator_save_feedback",{p_token:token, p_session_id:s.id, p_feedback:$("fbText").value});
+        s.facilitator_feedback = $("fbText").value;
+        btn.textContent="שמירת משוב"; btn.disabled=false;
+        statusEl.style.display="inline";
+        setTimeout(()=>{statusEl.style.display="none";},2500);
+      }catch(e){ alert("השמירה נכשלה"); btn.disabled=false; btn.textContent="שמירת משוב"; }
+    };
+
+    renderAttendance(s.id);
+  }
+
+  async function renderAttendance(sessionId){
+    const area = $("attendArea");
     if(!roster.length){
       area.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">אין חברי קבוצה רשומים עדיין.</p>';
       return;
     }
+    area.innerHTML = '<p class="loading">טוען…</p>';
     try{
       const current = await rpc("facilitator_get_attendance",{p_token:token, p_session_id:sessionId});
       const presentIds = new Set((current||[]).map(c=>c.person_id));
@@ -184,11 +208,13 @@
   }
 
   $("addSessBtn").onclick = async function(){
-    const date=$("newSessDate").value, loc=$("newSessLoc").value.trim();
+    const date=$("newSessDate").value;
+    if(!date){ alert("נא לבחור תאריך"); return; }
     this.disabled=true;
     try{
-      await rpc("facilitator_add_session",{p_token:token, p_date:date||null, p_location:loc||null});
-      $("newSessDate").value=""; $("newSessLoc").value="";
+      const newId = await rpc("facilitator_add_session",{p_token:token, p_date:date, p_location:null});
+      $("newSessDate").value="";
+      selectedSessionId = newId;
       await loadSessions();
     }catch(e){ alert("ההוספה נכשלה"); }
     this.disabled=false;
