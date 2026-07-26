@@ -190,6 +190,7 @@ const YL = (function(){
   function renderModuleNav(container, current){
     const modules=[
       {href:"referrals.html", label:"פניות"},
+      {href:"people.html", label:"כל האנשים"},
       {href:"activities.html", label:"פעילויות"},
       {href:"content.html", label:"תוכן"},
       {href:"tasks.html", label:"משימות ולוח שנה"},
