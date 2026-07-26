@@ -3,14 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>יוצאים לאור – משימות ולוח שנה</title>
+<title>יוצאים לאור – כל האנשים</title>
 <link rel="stylesheet" href="shared/core.css">
-<style>
-  .type-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px}
-  .day-group{margin-bottom:18px}
-  .day-header{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
-  .event-row{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px}
-</style>
 </head>
 <body>
 
@@ -20,24 +14,25 @@
     <div class="head-top">
       <div>
         <h1>יוצאים <span>לאור</span></h1>
-        <p class="sub">משימות ולוח שנה</p>
+        <p class="sub">כל האנשים במערכת</p>
       </div>
     </div>
     <nav id="moduleNav" class="hidden"></nav>
-    <nav id="mainNav" class="hidden">
-      <button id="tabTasks" class="active">משימות</button>
-      <button id="tabCal">לוח שנה</button>
-    </nav>
   </div>
 </header>
 
 <main>
 
-  <section id="viewLock">
+  <section id="viewInitLoading">
+    <div class="card tiny" style="text-align:center">
+      <p class="loading">טוען…</p>
+    </div>
+  </section>
+
+  <section id="viewLock" class="hidden">
     <div class="card tiny">
       <div class="lock-icon">🔒</div>
       <h2 style="font-size:20px;margin-bottom:4px">כניסת צוות</h2>
-      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">אזור זה מיועד לצוות ולמתנדבי העמותה.</p>
       <div class="field" style="text-align:right">
         <label>מייל</label>
         <input id="loginEmail" inputmode="email" dir="ltr" placeholder="you@example.com">
@@ -54,103 +49,46 @@
   <section id="viewNoAccess" class="hidden">
     <div class="card tiny">
       <div class="lock-icon">🚫</div>
-      <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למערכת</h2>
-      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">המשתמש שלך מחובר, אבל לא משויך לאף תפקיד עדיין. פנה/י למנהל/ת המערכת.</p>
+      <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למודול זה</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">מסך זה דורש הרשאת מנהל/ת מערכת או רכז/ת פניות.</p>
       <button class="btn-ghost" id="logoutBtn0">התנתקות</button>
     </div>
   </section>
 
-  <!-- ══ משימות ══ -->
-  <section id="viewTasks" class="hidden">
+  <section id="viewMain" class="hidden">
     <div class="dash-head">
       <div>
-        <h2 style="font-size:20px">משימות</h2>
-        <p style="font-size:14px;color:var(--ink-soft)"><span id="counter"></span></p>
+        <h2 style="font-size:20px">כל האנשים</h2>
+        <p style="font-size:14px;color:var(--ink-soft)"><span id="counter"></span> · כולל מי שאין לו/ה פנייה (רשימת תפוצה, מנחים, אורחי תוכן וכו')</p>
       </div>
       <div class="dash-actions">
-        <button class="btn-line" id="newTaskBtn">+ משימה חדשה</button>
-        <button class="btn-ghost" id="refreshBtn1">↻ רענון</button>
+        <button class="btn-line" id="newPersonBtn">+ איש/אשת קשר חדש/ה</button>
+        <button class="btn-ghost" id="refreshBtn">↻ רענון</button>
         <button class="btn-ghost" id="logoutBtn1">התנתקות (<span class="who1"></span>)</button>
       </div>
     </div>
 
-    <div class="card hidden" id="newTaskCard" style="margin-bottom:20px">
-      <h2 style="font-size:17px;margin-bottom:16px">משימה חדשה</h2>
-      <div class="field">
-        <label>כותרת <span class="req">*</span></label>
-        <input id="ntTitle" placeholder="למשל: בניית האתר">
+    <div class="card hidden" id="newPersonCard" style="margin-bottom:20px">
+      <h2 style="font-size:17px;margin-bottom:16px">איש/אשת קשר חדש/ה</h2>
+      <div class="row2">
+        <div class="field"><label>שם פרטי <span class="req">*</span></label><input id="npFirst"></div>
+        <div class="field"><label>שם משפחה</label><input id="npLast"></div>
       </div>
       <div class="row2">
-        <div class="field">
-          <label>אחראי/ת</label>
-          <input id="ntAssigned" placeholder="ברירת מחדל: את/ה">
-        </div>
-        <div class="field">
-          <label>תאריך יעד</label>
-          <input type="date" id="ntDue">
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>סטטוס</label>
-          <select id="ntStatus"><option>פתוחה</option><option>בביצוע</option><option>הושלמה</option></select>
-        </div>
-        <div class="field">
-          <label>קשור ל... (אופציונלי)</label>
-          <select id="ntLinkType"><option value="">ללא</option><option>פנייה</option><option>פעילות</option><option>תוכן</option></select>
-        </div>
-      </div>
-      <div class="field">
-        <label>פירוט הקישור (חופשי, למשל שם הקבוצה)</label>
-        <input id="ntLinkNote" placeholder="אופציונלי">
-      </div>
-      <div class="field">
-        <label>הערות</label>
-        <textarea id="ntNotes" rows="2"></textarea>
+        <div class="field"><label>טלפון</label><input id="npPhone" dir="ltr"></div>
+        <div class="field"><label>מייל</label><input id="npEmail" dir="ltr"></div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn" id="saveTaskBtn" style="width:auto;padding:12px 24px">שמירה</button>
-        <button class="btn-ghost" id="cancelTaskBtn">ביטול</button>
+        <button class="btn" id="saveNewPersonBtn" style="width:auto;padding:12px 24px">שמירה</button>
+        <button class="btn-ghost" id="cancelNewPersonBtn">ביטול</button>
       </div>
     </div>
 
     <div class="filters">
-      <input id="fSearch" placeholder="חיפוש כותרת…">
-      <select id="fAssigned"><option value="">כל האחראים</option></select>
-      <select id="fStatus"><option value="">כל הסטטוסים</option><option>פתוחה</option><option>בביצוע</option><option>הושלמה</option></select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="fMine" style="width:auto"> רק שלי</label>
+      <input id="fSearch" placeholder="חיפוש שם / טלפון / מייל…" style="grid-column:1/-1">
     </div>
 
     <div id="listArea"><p class="loading">טוען…</p></div>
-  </section>
-
-  <!-- ══ לוח שנה ══ -->
-  <section id="viewCal" class="hidden">
-    <div class="dash-head">
-      <div>
-        <h2 style="font-size:20px">לוח שנה</h2>
-        <p style="font-size:14px;color:var(--ink-soft)">מרכז אוטומטית תאריכי יעד של משימות, מפגשי קבוצות, ותאריכי פרסום תוכן</p>
-      </div>
-      <div class="dash-actions">
-        <button class="btn-line" id="calViewToggle" style="width:auto;padding:8px 16px;font-size:13px">📋 תצוגת רשימה</button>
-        <button class="btn-line" id="calYearToggle" style="width:auto;padding:8px 16px;font-size:13px">📆 תצוגה שנתית</button>
-        <button class="btn-ghost" id="refreshBtn2">↻ רענון</button>
-        <button class="btn-ghost" id="logoutBtn2">התנתקות (<span class="who2"></span>)</button>
-      </div>
-    </div>
-    <div id="calGridNav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn-ghost" id="calPrevMonth">→ הקודם</button>
-      <b id="calMonthLabel" style="font-size:16px;min-width:140px;text-align:center"></b>
-      <button class="btn-ghost" id="calNextMonth">הבא ←</button>
-      <button class="btn-ghost" id="calTodayBtn" style="font-size:13px">היום</button>
-      <button class="btn-line" id="calHebToggle" style="width:auto;padding:6px 14px;font-size:12px">📅 לפי חודש עברי</button>
-    </div>
-    <div id="calYearNav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">
-      <button class="btn-ghost" id="calPrevYear">→ הקודמת</button>
-      <b id="calYearLabel" style="font-size:18px;min-width:80px;text-align:center"></b>
-      <button class="btn-ghost" id="calNextYear">הבאה ←</button>
-    </div>
-    <div id="calArea"><p class="loading">טוען…</p></div>
   </section>
 
 </main>
@@ -160,39 +98,26 @@
 (function(){
   "use strict";
   const {$, esc, fmtDate, api} = YL;
-  let myName = "";
-
-  function showTab(name){
-    $("tabTasks").classList.toggle("active",name==="tasks");
-    $("tabCal").classList.toggle("active",name==="cal");
-    $("viewTasks").classList.toggle("hidden",name!=="tasks");
-    $("viewCal").classList.toggle("hidden",name!=="cal");
-    if(name==="cal") loadCalendar();
-  }
-  $("tabTasks").onclick=()=>showTab("tasks");
-  $("tabCal").onclick=()=>showTab("cal");
-  ["logoutBtn0","logoutBtn1","logoutBtn2"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
 
   async function showApp(){
     const user = await YL.getUser();
-    if(!user){ $("viewLock").classList.remove("hidden"); return; }
-    YL.renderModuleNav($("moduleNav"), "tasks.html");
-    myName = YL.whoami()||"";
+    if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
+    YL.renderModuleNav($("moduleNav"), "people.html");
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    if(!roles.length){
+    const allowed = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת פניות");
+    if(!allowed){
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
     }
     $("viewLock").classList.add("hidden");
     $("viewNoAccess").classList.add("hidden");
-    $("mainNav").classList.remove("hidden");
-    document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=myName);
-    $("ntAssigned").placeholder = myName || "ברירת מחדל: את/ה";
-    showTab("tasks");
-    loadTasks();
+    $("viewMain").classList.remove("hidden");
+    document.querySelectorAll(".who1").forEach(el=>el.textContent=YL.whoami()||"");
+    loadPeople();
   }
+  ["logoutBtn0","logoutBtn1"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
   $("loginBtn").onclick=async function(){
     $("loginErr").style.display="none";
     this.disabled=true;
@@ -201,293 +126,189 @@
     this.disabled=false;
   };
 
-  // ═══ משימה חדשה ═══
-  $("newTaskBtn").onclick=()=>$("newTaskCard").classList.remove("hidden");
-  $("cancelTaskBtn").onclick=()=>$("newTaskCard").classList.add("hidden");
-  $("saveTaskBtn").onclick=async function(){
-    const title=$("ntTitle").value.trim();
-    if(!title){ alert("נא למלא כותרת"); return; }
+  // ═══ איש קשר חדש ═══
+  $("newPersonBtn").onclick=()=>$("newPersonCard").classList.remove("hidden");
+  $("cancelNewPersonBtn").onclick=()=>$("newPersonCard").classList.add("hidden");
+  $("saveNewPersonBtn").onclick=async function(){
+    const first=$("npFirst").value.trim();
+    if(!first){ alert("נא למלא שם פרטי"); return; }
     this.disabled=true;
     try{
-      await api("/tasks",{method:"POST",body:JSON.stringify({
-        title:title,
-        assigned_to:$("ntAssigned").value.trim()||myName||null,
-        due_date:$("ntDue").value||null,
-        status:$("ntStatus").value,
-        linked_type:$("ntLinkType").value||null,
-        linked_note:$("ntLinkNote").value.trim()||null,
-        notes:$("ntNotes").value.trim()||null,
-        created_by:myName||null
+      await api("/persons",{method:"POST",body:JSON.stringify({
+        first_name:first, last_name:$("npLast").value.trim()||null,
+        phone:$("npPhone").value.trim()||null, email:$("npEmail").value.trim()||null,
+        source:"manual"
       })});
-      ["ntTitle","ntAssigned","ntDue","ntLinkNote","ntNotes"].forEach(id=>$(id).value="");
-      $("newTaskCard").classList.add("hidden");
-      loadTasks();
+      ["npFirst","npLast","npPhone","npEmail"].forEach(id=>$(id).value="");
+      $("newPersonCard").classList.add("hidden");
+      loadPeople();
     }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); }
     this.disabled=false;
   };
 
-  // ═══ רשימת משימות ═══
-  let tasks=[];
-  ["fSearch","fAssigned","fStatus","fMine"].forEach(id=>{
-    document.addEventListener("input",e=>{ if(e.target.id===id) render(); });
-    document.addEventListener("change",e=>{ if(e.target.id===id) render(); });
+  // ═══ רשימה ═══
+  let people=[];
+  let expanded=null;
+  let editingId=null;
+
+  $("refreshBtn").onclick=loadPeople;
+  let searchDebounce;
+  $("fSearch").addEventListener("input",()=>{
+    clearTimeout(searchDebounce);
+    searchDebounce=setTimeout(loadPeople,300);
   });
 
-  async function loadTasks(){
+  async function loadPeople(){
     $("listArea").innerHTML='<p class="loading">טוען…</p>';
     try{
-      tasks = await api("/tasks?order=due_date.asc.nullslast");
-      const af=$("fAssigned");
-      if(!af.dataset.filled){
-        const names=[...new Set(tasks.map(t=>t.assigned_to).filter(Boolean))];
-        names.forEach(n=>af.insertAdjacentHTML("beforeend",'<option>'+esc(n)+'</option>'));
-        af.dataset.filled=1;
+      const q=$("fSearch").value.trim();
+      let url="/persons?select=*,person_roles(role)&order=created_at.desc&limit=200";
+      if(q.length>=2){
+        url="/persons?select=*,person_roles(role)&order=created_at.desc&limit=200&or=(first_name.ilike.*"+encodeURIComponent(q)+"*,last_name.ilike.*"+encodeURIComponent(q)+"*,phone.ilike.*"+encodeURIComponent(q)+"*,email.ilike.*"+encodeURIComponent(q)+"*)";
       }
+      people=await api(url);
       render();
     }catch(e){
       $("listArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
     }
   }
-  $("refreshBtn1").onclick=loadTasks;
-
-  function filtered(){
-    const s=($("fSearch").value||"").trim().toLowerCase();
-    const assigned=$("fAssigned").value, status=$("fStatus").value, mine=$("fMine").checked;
-    return tasks.filter(t=>{
-      if(s && !(t.title||"").toLowerCase().includes(s)) return false;
-      if(assigned && t.assigned_to!==assigned) return false;
-      if(status && t.status!==status) return false;
-      if(mine && t.assigned_to!==myName) return false;
-      return true;
-    });
-  }
-  const statusColor={"פתוחה":"#FBEAE6;color:#A34430","בביצוע":"#FBF3E2;color:#8A6316","הושלמה":"#E0F0E3;color:#256B33"};
 
   function render(){
-    const list=filtered();
-    $("counter").textContent=list.length+" משימות מתוך "+tasks.length;
+    $("counter").textContent=people.length+" איש/ה"+(people.length===200?" (מוצגים 200 ראשונים - חפשו כדי לצמצם)":"");
     const area=$("listArea");
-    if(!tasks.length){
-      area.innerHTML='<div class="empty"><p>אין עדיין משימות</p><p>לוחצים על "+ משימה חדשה" כדי להתחיל.</p></div>';
+    if(!people.length){
+      area.innerHTML='<div class="empty"><p>אין תוצאות</p></div>';
       return;
     }
-    if(!list.length){ area.innerHTML='<div class="empty"><p>אין תוצאות לפילטרים שנבחרו</p></div>'; return; }
-    area.innerHTML = list.map(t=>{
-      const overdue = t.due_date && t.status!=="הושלמה" && new Date(t.due_date) < new Date().setHours(0,0,0,0);
-      return '<div class="q-card">'+
-        '<div class="q-top"><div>'+
-          '<p class="q-name">'+esc(t.title)+'</p>'+
-          '<p class="q-meta">'+(t.assigned_to?'אחראי/ת: '+esc(t.assigned_to)+' · ':'')+
-            (t.due_date?'<span style="'+(overdue?'color:var(--err);font-weight:700':'')+'">עד '+fmtDate(t.due_date)+'</span>':'ללא תאריך יעד')+
-            (t.linked_type?' · קשור ל'+esc(t.linked_type)+(t.linked_note?' ('+esc(t.linked_note)+')':''):'')+
-          '</p>'+
-        '</div><select class="status-sel" data-id="'+t.id+'" style="background:'+statusColor[t.status]+'">'+
-          ['פתוחה','בביצוע','הושלמה'].map(s=>'<option'+(t.status===s?' selected':'')+'>'+s+'</option>').join('')+
-        '</select></div>'+
-        (t.notes?'<div class="q-notes">'+esc(t.notes)+'</div>':'')+
-        '<div style="margin-top:10px"><button type="button" class="del" data-delete="'+t.id+'">מחיקה</button></div>'+
-      '</div>';
-    }).join('');
-
-    area.querySelectorAll(".status-sel").forEach(sel=>{
-      sel.onchange=async function(){
-        try{ await api("/tasks?id=eq."+sel.dataset.id,{method:"PATCH",body:JSON.stringify({status:sel.value})}); loadTasks(); }
-        catch(e){ alert("העדכון נכשל: "+e.message.slice(0,150)); }
-      };
-    });
-    area.querySelectorAll("[data-delete]").forEach(b=>{
-      b.onclick=async ()=>{
-        if(!confirm("למחוק את המשימה?")) return;
-        try{ await api("/tasks?id=eq."+b.dataset.delete,{method:"DELETE"}); loadTasks(); }
-        catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,150)); }
-      };
-    });
-  }
-
-  // ═══ לוח שנה - נגזר משלוש טבלאות, בלי לשמור נתונים משלו ═══
-  let calEvents=[];
-  let calView='list';
-  let calMonth=new Date(); calMonth.setDate(1);
-  let hebMode=false;
-  let hebAnchor=new Date();
-  const MONTH_NAMES=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-  const hebFullFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'});
-  const hebDayFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric'});
-  const hebMonthYearFmt=new Intl.DateTimeFormat('he-u-ca-hebrew',{month:'long',year:'numeric'});
-  function hebDateStr(d){ try{ return hebFullFmt.format(d); }catch(e){ return ""; } }
-  function hebDayNum(d){ try{ return hebDayFmt.format(d); }catch(e){ return ""; } }
-  function hebMonthKey(d){ try{ return hebMonthYearFmt.format(d); }catch(e){ return ""; } }
-  function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-
-  $("refreshBtn2").onclick=loadCalendar;
-  $("calViewToggle").onclick=()=>{
-    calView = calView==='list' ? 'grid' : 'list';
-    $("calViewToggle").textContent = calView==='list' ? '📋 תצוגת רשימה' : '🗓 תצוגת רשת';
-    $("calGridNav").classList.toggle("hidden", calView!=='grid');
-    $("calYearNav").classList.add("hidden");
-    renderCalendar();
-  };
-  $("calYearToggle").onclick=()=>{
-    calView = calView==='year' ? 'grid' : 'year';
-    $("calYearToggle").textContent = calView==='year' ? '🗓 תצוגת חודש' : '📆 תצוגה שנתית';
-    $("calGridNav").classList.toggle("hidden", calView!=='grid');
-    $("calYearNav").classList.toggle("hidden", calView!=='year');
-    renderCalendar();
-  };
-  $("calPrevYear").onclick=()=>{ calMonth.setFullYear(calMonth.getFullYear()-1); renderCalendar(); };
-  $("calNextYear").onclick=()=>{ calMonth.setFullYear(calMonth.getFullYear()+1); renderCalendar(); };
-  $("calHebToggle").onclick=()=>{
-    hebMode=!hebMode;
-    $("calHebToggle").textContent = hebMode ? '📅 לפי חודש לועזי' : '📅 לפי חודש עברי';
-    if(hebMode) hebAnchor=new Date(calMonth); else calMonth=new Date(hebAnchor.getFullYear(),hebAnchor.getMonth(),1);
-    renderCalendar();
-  };
-  $("calPrevMonth").onclick=()=>{
-    if(hebMode){ hebAnchor.setDate(hebAnchor.getDate()-30); } else { calMonth.setMonth(calMonth.getMonth()-1); }
-    renderCalendar();
-  };
-  $("calNextMonth").onclick=()=>{
-    if(hebMode){ hebAnchor.setDate(hebAnchor.getDate()+30); } else { calMonth.setMonth(calMonth.getMonth()+1); }
-    renderCalendar();
-  };
-  $("calTodayBtn").onclick=()=>{ calMonth=new Date(); calMonth.setDate(1); hebAnchor=new Date(); renderCalendar(); };
-
-  async function loadCalendar(){
-    $("calArea").innerHTML='<p class="loading">טוען…</p>';
-    try{
-      const [taskRows, sessionRows, contentRows] = await Promise.all([
-        api("/tasks?due_date=not.is.null&status=neq.הושלמה&select=id,title,due_date,assigned_to").catch(()=>[]),
-        api("/activity_sessions?session_date=not.is.null&select=id,session_date,location,activities(title,type)").catch(()=>[]),
-        api("/content_items?publish_date=not.is.null&select=id,title,publish_date,type").catch(()=>[])
-      ]);
-      calEvents=[];
-      taskRows.forEach(t=>calEvents.push({date:t.due_date, type:"משימה", color:"#FBEAE6;color:#A34430", title:t.title+(t.assigned_to?" ("+t.assigned_to+")":"")}));
-      sessionRows.forEach(s=>calEvents.push({date:s.session_date, type:(s.activities?s.activities.type:"מפגש"), color:"#E3EEEA;color:#2C5952", title:(s.activities?s.activities.title:"")+(s.location?" · "+s.location:"")}));
-      contentRows.forEach(c=>calEvents.push({date:c.publish_date, type:c.type, color:"#FBF3E2;color:#8A6316", title:c.title}));
-      calEvents.sort((a,b)=>a.date<b.date?-1:1);
-      renderCalendar();
-    }catch(e){
-      $("calArea").innerHTML='<div class="empty"><p>הטעינה נכשלה</p><p>'+esc(e.message.slice(0,200))+'</p></div>';
-    }
-  }
-
-  function renderCalendar(){
-    if(calView==='grid') renderCalendarGrid();
-    else if(calView==='year') renderCalendarYear();
-    else renderCalendarList();
-  }
-
-  function renderCalendarYear(){
-    const year=calMonth.getFullYear();
-    $("calYearLabel").textContent=year;
-    const byDate={};
-    calEvents.forEach(ev=>{ (byDate[ev.date]=byDate[ev.date]||[]).push(ev); });
-    const todayStr=isoOf(new Date());
-
-    let html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">';
-    for(let m=0;m<12;m++){
-      const first=new Date(year,m,1);
-      const daysInMonth=new Date(year,m+1,0).getDate();
-      const offset=first.getDay();
-      html+='<div class="card" style="padding:12px;cursor:pointer" data-jump-month="'+m+'">'+
-        '<p style="font-weight:700;font-size:14px;margin-bottom:8px;text-align:center;color:var(--primary)">'+MONTH_NAMES[m]+'</p>'+
-        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
-      ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{ html+='<div style="text-align:center;font-size:9px;color:var(--ink-soft)">'+d+'</div>'; });
-      for(let i=0;i<offset;i++) html+='<div></div>';
-      for(let day=1;day<=daysInMonth;day++){
-        const dateStr=year+"-"+String(m+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-        const has=!!byDate[dateStr];
-        const isToday=dateStr===todayStr;
-        html+='<div style="text-align:center;font-size:9px;padding:2px 0;border-radius:3px;'+
-          (isToday?'background:var(--primary);color:#fff;font-weight:700;':(has?'background:var(--primary-soft);color:var(--primary);font-weight:700;':'color:var(--ink)'))+
-          '">'+day+'</div>';
+    let html='<div class="table-scroll"><table><thead><tr><th>שם</th><th>טלפון</th><th>מייל</th><th>תפקידים</th><th>נוצר/ה</th></tr></thead><tbody>';
+    people.forEach(p=>{
+      const roleTags=(p.person_roles||[]).map(r=>r.role).join(", ")||"—";
+      html+='<tr class="main-row" data-row="'+p.id+'">'+
+        '<td style="font-weight:600">'+esc((p.first_name||"")+" "+(p.last_name||""))+'</td>'+
+        '<td dir="ltr">'+esc(p.phone||"—")+'</td>'+
+        '<td dir="ltr">'+esc(p.email||"—")+'</td>'+
+        '<td>'+esc(roleTags)+'</td>'+
+        '<td>'+fmtDate(p.created_at)+'</td>'+
+      '</tr>';
+      if(expanded===p.id){
+        const isEditing=editingId===p.id;
+        html+='<tr class="detail-row"><td colspan="5">';
+        if(isEditing){
+          html+=
+            '<div class="row2">'+
+              '<div class="field"><label>שם פרטי</label><input data-e="first_name" value="'+esc(p.first_name||"")+'"></div>'+
+              '<div class="field"><label>שם משפחה</label><input data-e="last_name" value="'+esc(p.last_name||"")+'"></div>'+
+            '</div>'+
+            '<div class="row2">'+
+              '<div class="field"><label>טלפון</label><input data-e="phone" value="'+esc(p.phone||"")+'" dir="ltr"></div>'+
+              '<div class="field"><label>מייל</label><input data-e="email" value="'+esc(p.email||"")+'" dir="ltr"></div>'+
+            '</div>'+
+            '<div class="field"><label>אזור</label><input data-e="region_hint" value="'+esc(p.region_hint||"")+'"></div>'+
+            '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+              '<button type="button" class="btn-line" data-save="'+p.id+'" style="width:auto;padding:8px 20px">💾 שמירה</button>'+
+              '<button type="button" class="btn-ghost" data-cancel>ביטול</button>'+
+            '</div>';
+        } else {
+          html+=
+            (p.region_hint?'<p><b>אזור:</b> '+esc(p.region_hint)+'</p>':"")+
+            '<p><b>מקור:</b> '+esc(p.source||"—")+'</p>'+
+            '<p><b>סטטוס קהילה:</b> '+esc(p.community_status||"לא קהילה")+'</p>'+
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+              '<button type="button" class="btn-ghost" data-edit="'+p.id+'">✏ עריכה</button>'+
+              '<button type="button" class="btn-line" data-add-referral="'+p.id+'" style="width:auto;padding:8px 16px;font-size:13px">➕ יצירת פנייה</button>'+
+              '<button type="button" class="btn-line" data-toggle-group="'+p.id+'" style="width:auto;padding:8px 16px;font-size:13px">➕ הוספה לקבוצה</button>'+
+              '<button type="button" class="del" data-delete="'+p.id+'">🗑 מחיקה לגמרי</button>'+
+            '</div>'+
+            '<div class="hidden row2" data-group-picker="'+p.id+'" style="margin-top:10px">'+
+              '<select data-group-select="'+p.id+'"><option value="">טוען קבוצות…</option></select>'+
+              '<button type="button" class="btn" data-confirm-group="'+p.id+'" style="width:auto;padding:8px 16px">הוספה</button>'+
+            '</div>';
+        }
+        html+='</td></tr>';
       }
-      html+='</div></div>';
-    }
-    html+='</div>';
-    $("calArea").innerHTML=html;
-    $("calArea").querySelectorAll('[data-jump-month]').forEach(card=>{
-      card.onclick=()=>{
-        calMonth=new Date(year, parseInt(card.dataset.jumpMonth,10), 1);
-        calView='grid';
-        $("calYearToggle").textContent='📆 תצוגה שנתית';
-        $("calYearNav").classList.add("hidden");
-        $("calGridNav").classList.remove("hidden");
-        renderCalendar();
+    });
+    html+="</tbody></table></div>";
+    area.innerHTML=html;
+
+    area.querySelectorAll("[data-add-referral]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("ליצור פנייה חדשה (ריקה, לעריכה בהמשך) עבור האדם הזה?")) return;
+        try{
+          await api("/referrals",{method:"POST",body:JSON.stringify({person_id:btn.dataset.addReferral, status:"לא נוצר קשר"})});
+          alert("נוצרה פנייה - אפשר לערוך פרטים מלאים ב-referrals.html");
+        }catch(e){ alert("היצירה נכשלה: "+e.message.slice(0,200)); }
       };
     });
-  }
-
-  function renderCalendarList(){
-    if(!calEvents.length){
-      $("calArea").innerHTML='<div class="empty"><p>אין אירועים קרובים</p><p>משימות עם תאריך יעד, מפגשי קבוצות ותאריכי פרסום תוכן יופיעו כאן אוטומטית.</p></div>';
-      return;
-    }
-    let currentDate="", html="";
-    calEvents.forEach(ev=>{
-      if(ev.date!==currentDate){
-        if(currentDate) html+="</div>";
-        currentDate=ev.date;
-        const hebStr=hebDateStr(new Date(ev.date+"T00:00:00"));
-        html+='<div class="day-group"><div class="day-header">'+fmtDate(ev.date)+(hebStr?' · <span style="font-weight:400;color:var(--ink-soft)">'+esc(hebStr)+'</span>':'')+'</div>';
-      }
-      html+='<div class="event-row"><span class="type-badge" style="background:'+ev.color+'">'+esc(ev.type)+'</span>'+esc(ev.title)+'</div>';
+    area.querySelectorAll("[data-toggle-group]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const pid=btn.dataset.toggleGroup;
+        const picker=area.querySelector('[data-group-picker="'+pid+'"]');
+        picker.classList.toggle("hidden");
+        if(!picker.classList.contains("hidden")){
+          try{
+            const acts=await api("/activities?select=id,title,type&order=created_at.desc");
+            area.querySelector('[data-group-select="'+pid+'"]').innerHTML=
+              acts.map(a=>'<option value="'+a.id+'">'+esc(a.type+" - "+a.title)+'</option>').join('');
+          }catch(e){ alert("טעינת רשימת הקבוצות נכשלה - יש לוודא הרשאה למודול הפעילויות"); }
+        }
+      };
     });
-    html+="</div>";
-    $("calArea").innerHTML=html;
-  }
-
-  function renderCalendarGrid(){
-    let startDate, endDate, label;
-    if(hebMode){
-      const key=hebMonthKey(hebAnchor);
-      // סורקים אחורה למציאת תחילת החודש העברי
-      let s=new Date(hebAnchor);
-      while(hebMonthKey(new Date(s.getTime()-86400000))===key) s.setDate(s.getDate()-1);
-      // וקדימה למציאת סופו
-      let e=new Date(hebAnchor);
-      while(hebMonthKey(new Date(e.getTime()+86400000))===key) e.setDate(e.getDate()+1);
-      startDate=s; endDate=e; label=key;
-    } else {
-      const year=calMonth.getFullYear(), month=calMonth.getMonth();
-      startDate=new Date(year,month,1);
-      endDate=new Date(year,month+1,0);
-      label=MONTH_NAMES[month]+" "+year;
-    }
-    renderCalendarGridRange(startDate, endDate, label);
-  }
-
-  function renderCalendarGridRange(startDate, endDate, label){
-    $("calMonthLabel").textContent = label;
-    const byDate={};
-    calEvents.forEach(ev=>{ (byDate[ev.date]=byDate[ev.date]||[]).push(ev); });
-    const todayStr=isoOf(new Date());
-    const startOffset=startDate.getDay();
-
-    let html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">';
-    ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{
-      html+='<div style="text-align:center;font-size:12px;font-weight:700;color:var(--primary);padding:4px">'+d+'</div>';
+    area.querySelectorAll("[data-confirm-group]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const pid=btn.dataset.confirmGroup;
+        const activityId=area.querySelector('[data-group-select="'+pid+'"]').value;
+        if(!activityId) return;
+        try{
+          await api("/activity_members?on_conflict=activity_id,person_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({activity_id:activityId, person_id:pid})});
+          alert("נוסף/ה לקבוצה בהצלחה - ניהול מלא ב-activities.html");
+          area.querySelector('[data-group-picker="'+pid+'"]').classList.add("hidden");
+        }catch(e){ alert("ההוספה נכשלה: "+e.message.slice(0,200)); }
+      };
     });
-    for(let i=0;i<startOffset;i++) html+='<div></div>';
-    let d=new Date(startDate);
-    while(d<=endDate){
-      const dateStr=isoOf(d);
-      const dayEvents=byDate[dateStr]||[];
-      const isToday=dateStr===todayStr;
-      html+='<div style="min-height:82px;border:1px solid var(--line);border-radius:8px;padding:5px;background:'+(isToday?'var(--primary-soft)':'#fff')+'">'+
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'+
-          '<span style="font-size:12px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--primary)':'var(--ink)')+'">'+d.getDate()+'</span>'+
-          '<span style="font-size:10px;color:var(--ink-soft)">'+hebDayNum(d)+'</span>'+
-        '</div>'+
-        dayEvents.slice(0,3).map(ev=>
-          '<div title="'+esc(ev.title)+'" style="font-size:10px;background:'+ev.color+';border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ev.title)+'</div>'
-        ).join('')+
-        (dayEvents.length>3?'<div style="font-size:10px;color:var(--ink-soft)">+'+(dayEvents.length-3)+' נוספים</div>':'')+
-      '</div>';
-      d.setDate(d.getDate()+1);
-    }
-    html+='</div>';
-    $("calArea").innerHTML = html;
+    area.querySelectorAll("[data-delete]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        if(!confirm("למחוק את האדם הזה לגמרי מהמערכת - כולל כל הפניות, תפקידים, שיוך לקבוצות, וחשבון קהילה אם קיים? פעולה בלתי הפיכה.")) return;
+        btn.disabled=true; btn.textContent="מוחק…";
+        try{
+          await YL.callFunction("delete-person-fully",{person_id:btn.dataset.delete});
+          loadPeople();
+        }catch(e){ alert("המחיקה נכשלה: "+e.message.slice(0,250)); btn.disabled=false; btn.textContent="🗑 מחיקה לגמרי"; }
+      };
+    });
+
+    area.querySelectorAll("[data-row]").forEach(row=>{
+      row.onclick=()=>{ expanded=(expanded===row.dataset.row)?null:row.dataset.row; editingId=null; render(); };
+    });
+    area.querySelectorAll("[data-edit]").forEach(btn=>{
+      btn.onclick=(e)=>{ e.stopPropagation(); editingId=btn.dataset.edit; render(); };
+    });
+    area.querySelectorAll("[data-cancel]").forEach(btn=>{
+      btn.onclick=(e)=>{ e.stopPropagation(); editingId=null; render(); };
+    });
+    area.querySelectorAll("[data-save]").forEach(btn=>{
+      btn.onclick=async (e)=>{
+        e.stopPropagation();
+        const pid=btn.dataset.save;
+        const wrap=btn.closest("td");
+        const val=(name)=>wrap.querySelector('[data-e="'+name+'"]').value.trim();
+        btn.disabled=true; btn.textContent="שומר…";
+        try{
+          await api("/persons?id=eq."+pid,{method:"PATCH",body:JSON.stringify({
+            first_name: val("first_name")||"ללא שם",
+            last_name: val("last_name")||null,
+            phone: val("phone")||null,
+            email: val("email")||null,
+            region_hint: val("region_hint")||null
+          })});
+          editingId=null;
+          loadPeople();
+        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); btn.disabled=false; btn.textContent="💾 שמירה"; }
+      };
+    });
   }
 
   (async function init(){
@@ -495,6 +316,8 @@
       const ok=await YL.refreshSession();
       if(ok){ await showApp(); return; }
     }
+    $("viewInitLoading").classList.add("hidden");
+    $("viewLock").classList.remove("hidden");
   })();
 })();
 </script>
