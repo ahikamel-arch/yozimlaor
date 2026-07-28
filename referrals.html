@@ -21,6 +21,7 @@
     <nav id="mainNav" class="hidden">
       <button id="tabQueue" class="active">תור מיון <span id="queueCount"></span></button>
       <button id="tabDash">כל הפניות</button>
+      <button id="tabInfo">📞 מידע לשיחה</button>
     </nav>
   </div>
 </header>
@@ -148,6 +149,40 @@
     <div id="listArea"><p class="loading">טוען…</p></div>
   </section>
 
+  <!-- ══ מידע לשיחה ══ -->
+  <section id="viewInfo" class="hidden">
+    <div class="dash-head">
+      <div>
+        <h2 style="font-size:20px">📞 מידע לשיחה</h2>
+        <p style="font-size:14px;color:var(--ink-soft)">קווי סיוע, טיפולים מסובסדים, וקבוצות קיימות - לשימוש תוך כדי שיחה עם פונה</p>
+      </div>
+      <div class="dash-actions">
+        <button class="btn-ghost" id="refreshInfoBtn">↻ רענון</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="font-size:16px">☎️ קווי סיוע</h3>
+        <button class="btn-ghost" id="addHotlineBtn" style="font-size:13px">+ הוספה</button>
+      </div>
+      <div id="hotlinesArea"><p class="loading">טוען…</p></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="font-size:16px">🩺 טיפולים מסובסדים</h3>
+        <button class="btn-ghost" id="addTreatmentBtn" style="font-size:13px">+ הוספה</button>
+      </div>
+      <div id="treatmentsArea"><p class="loading">טוען…</p></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:12px">👥 קבוצות קיימות (עזר מהיר)</h3>
+      <div id="groupsRefArea"><p class="loading">טוען…</p></div>
+    </div>
+  </section>
+
 </main>
 
 <script src="shared/core.js"></script>
@@ -158,6 +193,7 @@
 
   const REGIONS=["צפון","חיפה והקריות","שרון","מרכז","תל אביב","ירושלים והסביבה","שפלה","דרום"];
   const GROUPS=["גברים","נשים","מעגל שני - הורים","מעגל שני - בני זוג"];
+  const GENDERS=["אישה","גבר","אחר / מעדיפ.ה לא לציין"];
   const GROUP_FILTERS=GROUPS.concat(["מעורבת"]);
   const SECTORS=["חילוני","מסורתי","דתי","חרדי","ערבי","אחר"];
   const STATUSES=["לא נוצר קשר","להיות בקשר בהמשך","בהמתנה לקבוצה","בשיבוץ לקבוצה","לא רלוונטי"];
@@ -188,12 +224,98 @@
   function showTab(name){
     $("tabQueue").classList.toggle("active",name==="queue");
     $("tabDash").classList.toggle("active",name==="dash");
+    $("tabInfo").classList.toggle("active",name==="info");
     $("viewQueue").classList.toggle("hidden",name!=="queue");
     $("viewDash").classList.toggle("hidden",name!=="dash");
+    $("viewInfo").classList.toggle("hidden",name!=="info");
+    if(name==="info") loadInfo();
   }
   $("tabQueue").onclick=()=>showTab("queue");
   $("tabDash").onclick=()=>showTab("dash");
+  $("tabInfo").onclick=()=>showTab("info");
   ["logoutBtn0","logoutBtn1","logoutBtn2"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
+
+  // ═══ מידע לשיחה ═══
+  $("refreshInfoBtn").onclick=loadInfo;
+  async function loadInfo(){
+    loadHotlines();
+    loadTreatments();
+    loadGroupsRef();
+  }
+  async function loadHotlines(){
+    $("hotlinesArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      const rows=await api("/info_resources?category=eq."+encodeURIComponent("קו סיוע")+"&order=sort_order.asc");
+      $("hotlinesArea").innerHTML = rows.length ? rows.map(r=>
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">'+
+          '<div><b>'+esc(r.title)+'</b>'+(r.notes?'<div style="font-size:12px;color:var(--ink-soft)">'+esc(r.notes)+'</div>':'')+'</div>'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            (r.phone?'<a href="tel:'+esc(r.phone)+'" style="color:var(--primary);font-weight:700;text-decoration:none" dir="ltr">📞 '+esc(r.phone)+'</a>':'')+
+            '<button type="button" class="btn-ghost" data-del-info="'+r.id+'" style="font-size:12px">✕</button>'+
+          '</div></div>'
+      ).join('') : '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין קווי סיוע ברשימה.</p>';
+      wireInfoDelete($("hotlinesArea"));
+    }catch(e){ $("hotlinesArea").innerHTML='<p style="color:var(--err);font-size:13px">הטעינה נכשלה</p>'; }
+  }
+  async function loadTreatments(){
+    $("treatmentsArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      const rows=await api("/info_resources?category=eq."+encodeURIComponent("טיפול מסובסד")+"&order=sort_order.asc");
+      $("treatmentsArea").innerHTML = rows.length ? rows.map(r=>
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">'+
+          '<div><b>'+esc(r.title)+'</b>'+(r.notes?'<div style="font-size:12px;color:var(--ink-soft)">'+esc(r.notes)+'</div>':'')+'</div>'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            (r.link?'<a href="'+esc(r.link)+'" target="_blank" style="color:var(--primary);font-weight:700">לקישור ›</a>':'')+
+            '<button type="button" class="btn-ghost" data-del-info="'+r.id+'" style="font-size:12px">✕</button>'+
+          '</div></div>'
+      ).join('') : '<p style="font-size:13px;color:var(--ink-soft)">אין עדיין טיפולים ברשימה.</p>';
+      wireInfoDelete($("treatmentsArea"));
+    }catch(e){ $("treatmentsArea").innerHTML='<p style="color:var(--err);font-size:13px">הטעינה נכשלה</p>'; }
+  }
+  function wireInfoDelete(container){
+    container.querySelectorAll('[data-del-info]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        if(!confirm("למחוק את זה מהרשימה?")) return;
+        try{ await api("/info_resources?id=eq."+btn.dataset.delInfo,{method:"DELETE"}); loadInfo(); }
+        catch(e){ alert("המחיקה נכשלה"); }
+      };
+    });
+  }
+  $("addHotlineBtn").onclick=async ()=>{
+    const title=prompt("שם קו הסיוע:");
+    if(!title) return;
+    const phone=prompt("מספר טלפון:");
+    try{ await api("/info_resources",{method:"POST",body:JSON.stringify({category:"קו סיוע",title:title,phone:phone||null})}); loadHotlines(); }
+    catch(e){ alert("ההוספה נכשלה"); }
+  };
+  $("addTreatmentBtn").onclick=async ()=>{
+    const title=prompt("שם הגורם/מסגרת:");
+    if(!title) return;
+    const link=prompt("קישור (אופציונלי):");
+    try{ await api("/info_resources",{method:"POST",body:JSON.stringify({category:"טיפול מסובסד",title:title,link:link||null})}); loadTreatments(); }
+    catch(e){ alert("ההוספה נכשלה"); }
+  };
+  async function loadGroupsRef(){
+    $("groupsRefArea").innerHTML='<p class="loading">טוען…</p>';
+    try{
+      const rows=await api("/activities?type=eq."+encodeURIComponent("קבוצת תמיכה")+"&select=id,title,city,group_gender,day_of_week,time_of_day,status,activity_members(is_facilitator,persons(first_name,last_name,phone))&order=title.asc");
+      if(!rows.length){ $("groupsRefArea").innerHTML='<p style="font-size:13px;color:var(--ink-soft)">אין עדיין קבוצות תמיכה במערכת.</p>'; return; }
+      $("groupsRefArea").innerHTML = '<div class="table-scroll"><table><thead><tr><th>קבוצה</th><th>עיר</th><th>הרכב</th><th>יום/שעה</th><th>סטטוס</th><th>מנחה</th></tr></thead><tbody>'+
+        rows.map(a=>{
+          const fac=(a.activity_members||[]).find(m=>m.is_facilitator);
+          const facName=fac&&fac.persons?(fac.persons.first_name+" "+(fac.persons.last_name||"")):"—";
+          const facPhone=fac&&fac.persons&&fac.persons.phone?(' · <span dir="ltr">'+esc(fac.persons.phone)+'</span>'):"";
+          const sColor=a.status==="קיימת"?"#E0F0E3;color:#256B33":(a.status==="בהקמה"?"#FBF3E2;color:#8A6316":"#EEEEEE;color:#777");
+          return '<tr><td style="font-weight:600">'+esc(a.title)+'</td>'+
+            '<td>'+esc(a.city||"—")+'</td>'+
+            '<td>'+esc(a.group_gender||"—")+'</td>'+
+            '<td>'+(a.day_of_week?'יום '+esc(a.day_of_week):"—")+(a.time_of_day?' '+esc(a.time_of_day):"")+'</td>'+
+            '<td><span class="badge" style="background:'+sColor+'">'+esc(a.status)+'</span></td>'+
+            '<td>'+esc(facName)+facPhone+'</td></tr>';
+        }).join('')+
+      '</tbody></table></div>';
+    }catch(e){ $("groupsRefArea").innerHTML='<p style="color:var(--err);font-size:13px">הטעינה נכשלה - יש לוודא הרשאה למודול הפעילויות</p>'; }
+  }
 
   // ═══ כניסה ═══
   $("loginBtn").onclick=async function(){
@@ -576,9 +698,15 @@
               '<div class="field"><label>קבוצה מבוקשת</label><select data-e="group_type_requested">'+
                 '<option value="">—</option>'+GROUPS.map(g=>'<option'+(r.group_type_requested===g?' selected':'')+'>'+g+'</option>').join('')+
               '</select></div>'+
+              '<div class="field"><label>מגדר</label><select data-e="gender">'+
+                '<option value="">—</option>'+GENDERS.map(g=>'<option'+(r.gender===g?' selected':'')+'>'+g+'</option>').join('')+
+              '</select></div>'+
+            '</div>'+
+            '<div class="row2">'+
               '<div class="field"><label>מגזר</label><select data-e="sector">'+
                 '<option value="">—</option>'+SECTORS.map(s=>'<option'+(r.sector===s?' selected':'')+'>'+s+'</option>').join('')+
               '</select></div>'+
+              '<div></div>'+
             '</div>'+
             '<div class="field"><label><input type="checkbox" data-e="mixed_ok" style="width:auto" '+(r.mixed_ok?'checked':'')+'> מתאימה גם קבוצה מעורבת</label></div>'+
             '<div class="field"><label>אזורים</label><div class="pills" data-e-regions>'+
@@ -596,6 +724,7 @@
         } else {
           html +=
             (p.email?'<p><b>מייל:</b> '+esc(p.email)+'</p>':"")+
+            (r.gender?'<p><b>מגדר:</b> '+esc(r.gender)+'</p>':"")+
             (r.city?'<p><b>עיר:</b> '+esc(r.city)+'</p>':"")+
             (r.age?'<p><b>גיל:</b> '+esc(r.age)+'</p>':"")+
             (r.sector?'<p><b>מגזר:</b> '+esc(r.sector)+'</p>':"")+
@@ -668,6 +797,7 @@
           }
           await api("/referrals?id=eq."+rid,{method:"PATCH",body:JSON.stringify({
             group_type_requested: wrap.querySelector('[data-e="group_type_requested"]').value||null,
+            gender: wrap.querySelector('[data-e="gender"]').value||null,
             sector: wrap.querySelector('[data-e="sector"]').value||null,
             mixed_ok: checked("mixed_ok"),
             regions: Array.from(editRegionsSet),
