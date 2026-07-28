@@ -283,6 +283,8 @@
     });
   }
 
+  let editingActivityId=null;
+
   function renderActivities(){
     const list=filtered();
     $("counter").textContent=list.length+" פעילויות מתוך "+activities.length;
@@ -294,6 +296,47 @@
     if(!list.length){ area.innerHTML='<div class="empty"><p>אין תוצאות לפילטרים שנבחרו</p></div>'; return; }
 
     area.innerHTML = list.map(a=>{
+      if(editingActivityId===a.id){
+        return '<div class="q-card">'+
+          '<div class="row2">'+
+            '<div class="field"><label>סוג</label><select data-ea="type">'+
+              ["קבוצת תמיכה","סופרוויז'ן","הכשרה","קורס מרצים","הרצאה","כנס","יום גיבוש"].map(t=>'<option'+(a.type===t?' selected':'')+'>'+t+'</option>').join('')+
+            '</select></div>'+
+            '<div class="field"><label>כותרת</label><input data-ea="title" value="'+esc(a.title||"")+'"></div>'+
+          '</div>'+
+          '<div class="row2">'+
+            '<div class="field"><label>עיר</label><input data-ea="city" value="'+esc(a.city||"")+'"></div>'+
+            '<div class="field"><label>הרכב הקבוצה</label><select data-ea="group_gender">'+
+              '<option value="">לא רלוונטי</option>'+["נשים","גברים","מעורבת"].map(g=>'<option'+(a.group_gender===g?' selected':'')+'>'+g+'</option>').join('')+
+            '</select></div>'+
+          '</div>'+
+          '<div class="row2">'+
+            '<div class="field"><label>יום קבוע</label><select data-ea="day_of_week">'+
+              '<option value="">לא קבוע</option>'+["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"].map(d=>'<option'+(a.day_of_week===d?' selected':'')+'>'+d+'</option>').join('')+
+            '</select></div>'+
+            '<div class="field"><label>שעה</label><input type="time" data-ea="time_of_day" value="'+(a.time_of_day?a.time_of_day.slice(0,5):"")+'"></div>'+
+          '</div>'+
+          '<div class="row2">'+
+            '<div class="field"><label>תדירות</label><select data-ea="frequency">'+
+              '<option value="">—</option>'+["שבועי","דו-שבועי","חד-פעמי","לא קבוע"].map(f=>'<option'+(a.frequency===f?' selected':'')+'>'+f+'</option>').join('')+
+            '</select></div>'+
+            '<div class="field"><label>מספר מפגשים מתוכנן</label><input data-ea="planned_session_count" value="'+(a.planned_session_count||"")+'" inputmode="numeric"></div>'+
+          '</div>'+
+          '<div class="row2">'+
+            '<div class="field"><label>קהל יעד</label><select data-ea="audience">'+
+              '<option value="">לא צוין</option>'+["נפגעים/ות","מלווים","מנחים","מתנדבים","פתוח לכולם"].map(au=>'<option'+(a.audience===au?' selected':'')+'>'+au+'</option>').join('')+
+            '</select></div>'+
+            '<div class="field"><label>סטטוס</label><select data-ea="status">'+
+              ["קיימת","בהקמה","הסתיימה"].map(s=>'<option'+(a.status===s?' selected':'')+'>'+s+'</option>').join('')+
+            '</select></div>'+
+          '</div>'+
+          '<div class="field"><label>הערות</label><textarea rows="2" data-ea="notes">'+esc(a.notes||"")+'</textarea></div>'+
+          '<div style="display:flex;gap:8px">'+
+            '<button type="button" class="btn" data-save-activity="'+a.id+'" style="width:auto;padding:10px 20px">💾 שמירה</button>'+
+            '<button type="button" class="btn-ghost" data-cancel-activity>ביטול</button>'+
+          '</div>'+
+        '</div>';
+      }
       const statusBadge = a.status==="קיימת" ? '#E0F0E3;color:#256B33' : (a.status==="בהקמה"?'#FBF3E2;color:#8A6316':'#EEEEEE;color:#777');
       return '<div class="q-card">'+
         '<div class="q-top"><div>'+
@@ -309,9 +352,40 @@
         '<details class="act-details" '+(openActivity===a.id?'open':'')+' data-act="'+a.id+'"><summary>מפגשים ומעקב</summary>'+
           '<div data-sessions-area="'+a.id+'"><p class="loading">טוען מפגשים…</p></div>'+
         '</details>'+
-        (canManageActivities ? '<div style="margin-top:12px"><button type="button" class="del" data-delete-activity="'+a.id+'">🗑 מחיקת הפעילות הזו לגמרי</button></div>' : '')+
+        (canManageActivities ? '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+          '<button type="button" class="btn-ghost" data-edit-activity="'+a.id+'">✏ עריכת פרטי הקבוצה</button>'+
+          '<button type="button" class="del" data-delete-activity="'+a.id+'">🗑 מחיקת הפעילות הזו לגמרי</button>'+
+        '</div>' : '')+
       '</div>';
     }).join('');
+
+    area.querySelectorAll('[data-edit-activity]').forEach(btn=>{
+      btn.onclick=()=>{ editingActivityId=btn.dataset.editActivity; renderActivities(); };
+    });
+    area.querySelectorAll('[data-cancel-activity]').forEach(btn=>{
+      btn.onclick=()=>{ editingActivityId=null; renderActivities(); };
+    });
+    area.querySelectorAll('[data-save-activity]').forEach(btn=>{
+      btn.onclick=async ()=>{
+        const aid=btn.dataset.saveActivity;
+        const wrap=btn.closest(".q-card");
+        const val=(name)=>wrap.querySelector('[data-ea="'+name+'"]').value.trim();
+        btn.disabled=true; btn.textContent="שומר…";
+        try{
+          await api("/activities?id=eq."+aid,{method:"PATCH",body:JSON.stringify({
+            type: val("type"), title: val("title")||"ללא כותרת",
+            city: val("city")||null, group_gender: val("group_gender")||null,
+            day_of_week: val("day_of_week")||null, time_of_day: val("time_of_day")||null,
+            frequency: val("frequency")||null,
+            planned_session_count: val("planned_session_count")?parseInt(val("planned_session_count"),10):null,
+            audience: val("audience")||null, status: val("status"),
+            notes: val("notes")||null
+          })});
+          editingActivityId=null;
+          loadActivities();
+        }catch(e){ alert("השמירה נכשלה: "+e.message.slice(0,200)); btn.disabled=false; btn.textContent="💾 שמירה"; }
+      };
+    });
 
     area.querySelectorAll('[data-delete-activity]').forEach(btn=>{
       btn.onclick=async ()=>{
