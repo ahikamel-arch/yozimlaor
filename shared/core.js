@@ -187,18 +187,19 @@ const YL = (function(){
   }
 
   // ═══ תפריט ניווט משותף בין כל דפי הצוות ═══
-  function renderModuleNav(container, current){
+  function renderModuleNav(container, current, isAdminUser){
     const modules=[
       {href:"referrals.html", label:"פניות"},
-      {href:"people.html", label:"כל האנשים"},
+      {href:"people.html", label:"כל האנשים", adminOnly:true},
       {href:"activities.html", label:"פעילויות"},
       {href:"content.html", label:"תוכן"},
       {href:"tasks.html", label:"משימות ולוח שנה"},
       {href:"community.html", label:"רשת קהילתית"}
     ];
-    container.innerHTML = modules.map(m=>
-      '<a href="'+m.href+'"'+(current===m.href?' class="active"':'')+'>'+m.label+'</a>'
-    ).join('') + '<button type="button" onclick="YL.showMyCalendarLink()" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:10px 18px">📅 היומן שלי</button>';
+    container.innerHTML = modules
+      .filter(m=>!m.adminOnly || isAdminUser)
+      .map(m=>'<a href="'+m.href+'"'+(current===m.href?' class="active"':'')+'>'+m.label+'</a>').join('')
+      + '<button type="button" onclick="YL.showMyCalendarLink()" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:10px 18px">📅 היומן שלי</button>';
     container.classList.remove("hidden");
   }
 
@@ -220,10 +221,21 @@ const YL = (function(){
 
   function accessToken(){ return isLoggedIn() ? session.access_token : SUPABASE_KEY; }
 
+  async function accountActivationStatus(){
+    const user = await getUser();
+    if(!user) return {ok:true}; // לא מחובר/ת בכלל - לא רלוונטי כאן
+    try{
+      const rows = await api("/persons?community_auth_user_id=eq."+user.id+"&select=account_activated");
+      if(!rows.length) return {ok:true}; // אין רשומת Person מקושרת - חשבון ישן/ידני, לא חוסמים
+      return {ok: rows[0].account_activated===true};
+    }catch(e){ return {ok:true}; } // כשל בבדיקה - לא חוסמים בטעות, רק מתעדים
+  }
+
   return {
     $, esc, fmtDate, fmtTime, fmtDT,
     isLoggedIn, whoami, login, logout, refreshSession, getUser,
     setSessionFromTokens, setPassword, accessToken, myCalendarLink, showMyCalendarLink,
+    accountActivationStatus,
     api, personPicker, renderModuleNav, callFunction, SUPABASE_URL, SUPABASE_KEY
   };
 })();
