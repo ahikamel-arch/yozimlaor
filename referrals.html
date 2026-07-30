@@ -214,6 +214,14 @@
   async function showApp(){
     const user = await YL.getUser();
     if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
+    const activation = await YL.accountActivationStatus();
+    if(!activation.ok){
+      $("viewLock").classList.add("hidden");
+      $("viewNoAccess").classList.add("hidden");
+      $("viewInitLoading").classList.add("hidden");
+      $("viewSetPass").classList.remove("hidden");
+      return;
+    }
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
     isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
@@ -359,25 +367,16 @@
     this.disabled=true;
     try{
       await YL.setPassword(p1);
+      const user = await YL.getUser();
+      try{
+        await api("/persons?community_auth_user_id=eq."+user.id,{method:"PATCH",body:JSON.stringify({account_activated:true})});
+      }catch(e){}
       await showApp();
     }catch(e){ err.textContent="שמירת הסיסמה נכשלה: "+e.message.slice(0,150); err.style.display="block"; }
     this.disabled=false;
   };
 
   // בדיקה בטעינה - האם הגענו מקישור הזמנה (טוקנים ב-hash)
-  (async function checkInviteRedirect(){
-    const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
-    if(!hash) return;
-    const hp = new URLSearchParams(hash);
-    const at = hp.get("access_token"), rt = hp.get("refresh_token");
-    if(at && rt){
-      history.replaceState(null, "", location.pathname + location.search);
-      await YL.setSessionFromTokens(at, rt);
-      $("viewLock").classList.add("hidden");
-      $("viewSetPass").classList.remove("hidden");
-    }
-  })();
-
   // ═══ תור מיון ═══
   let queue=[];
   let queueDraft={}; // עריכות זמניות לפי id
@@ -955,8 +954,21 @@
     URL.revokeObjectURL(url);
   };
 
-  // ═══ אתחול ═══
+  // ═══ אתחול - רצף אחד, לא שתי בדיקות מקבילות (זה בדיוק מה שגרם לבאג האבטחה) ═══
   (async function init(){
+    const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+    if(hash){
+      const hp = new URLSearchParams(hash);
+      const at = hp.get("access_token"), rt = hp.get("refresh_token");
+      if(at && rt){
+        history.replaceState(null, "", location.pathname + location.search);
+        await YL.setSessionFromTokens(at, rt);
+        $("viewInitLoading").classList.add("hidden");
+        $("viewLock").classList.add("hidden");
+        $("viewSetPass").classList.remove("hidden");
+        return; // חשוב: לא ממשיכים להתחברות אוטומטית - חייבים לעבור דרך קביעת סיסמה קודם
+      }
+    }
     if(YL.isLoggedIn()){
       const ok=await YL.refreshSession();
       if(ok){ showApp(); return; }
