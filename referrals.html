@@ -87,7 +87,7 @@
     <div class="dash-head">
       <div>
         <h2 style="font-size:20px">תור מיון</h2>
-        <p style="font-size:14px;color:var(--ink-soft)">פניות שהגיעו מהטופס הציבורי, וגם פניות היסטוריות שיובאו. יש להשלים פרטים לפני אישור.</p>
+        <p style="font-size:14px;color:var(--ink-soft)" id="queueDesc">פניות שהגיעו מהטופס הציבורי. יש להשלים פרטים לפני אישור.</p>
       </div>
       <div class="dash-actions">
         <button class="btn-ghost" id="refreshQueueBtn">↻ רענון</button>
@@ -209,16 +209,20 @@
   const SC={"לא נוצר קשר":["#FBEAE6","#A34430"],"להיות בקשר בהמשך":["#FBF3E2","#8A6316"],"בהמתנה לקבוצה":["#E3EEEA","#2C5952"],"בשיבוץ לקבוצה":["#E0F0E3","#256B33"],"לא רלוונטי":["#EEEEEE","#777777"]};
 
   // ═══ ניווט בין מסכים ═══
+  let isAdminUser=false;
+
   async function showApp(){
     const user = await YL.getUser();
     if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
-    YL.renderModuleNav($("moduleNav"), "referrals.html");
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    const allowed = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת פניות");
+    isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
+    const allowed = isAdminUser || roles.some(r=>r.role==="רכז/ת פניות");
+    YL.renderModuleNav($("moduleNav"), "referrals.html", isAdminUser);
     $("viewSetPass").classList.add("hidden");
     if(!allowed){
       $("viewLock").classList.add("hidden");
+      $("viewInitLoading").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
     }
@@ -226,6 +230,9 @@
     $("viewInitLoading").classList.add("hidden");
     $("viewNoAccess").classList.add("hidden");
     $("mainNav").classList.remove("hidden");
+    $("queueDesc").textContent = isAdminUser
+      ? "פניות חדשות מהטופס + ארכיון היסטורי (מסומן בתג נפרד) - יש להשלים פרטים לפני אישור."
+      : "פניות חדשות שהגיעו מהטופס הציבורי. יש להשלים פרטים לפני אישור.";
     document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=YL.whoami()||"");
     showTab("queue");
     loadQueue(); loadDash();
@@ -378,7 +385,9 @@
   async function loadQueue(){
     $("queueArea").innerHTML='<p class="loading">טוען…</p>';
     try{
-      queue=await api("/intake_submissions?status=eq.%D7%9E%D7%9E%D7%AA%D7%99%D7%9F%20%D7%9C%D7%98%D7%99%D7%A4%D7%95%D7%9C&order=submitted_at.desc");
+      let url="/intake_submissions?status=eq.%D7%9E%D7%9E%D7%AA%D7%99%D7%9F%20%D7%9C%D7%98%D7%99%D7%A4%D7%95%D7%9C&order=submitted_at.desc";
+      if(!isAdminUser) url+="&source=eq.form"; // רכז/ת פניות רואה רק פניות חדשות, לא את הארכיון ההיסטורי
+      queue=await api(url);
       queue.forEach(q=>{ if(!queueDraft[q.id]) queueDraft[q.id]={
         regions:new Set(q.regions||[]), notes:q.notes||"", volunteer:"", status:"לא נוצר קשר"
       }});
@@ -400,7 +409,9 @@
       const d=queueDraft[q.id];
       html += '<div class="q-card">'+
         '<div class="q-top"><div>'+
-          '<p class="q-name">'+esc(q.first_name)+' '+esc(q.last_name||"")+'</p>'+
+          '<p class="q-name">'+esc(q.first_name)+' '+esc(q.last_name||"")+
+            (q.source==="historical_import"?' <span class="badge" style="background:#EEEEEE;color:#777;font-size:11px">🕰 ארכיון היסטורי</span>':'')+
+          '</p>'+
           '<p class="q-meta">התקבל '+fmtDT(q.submitted_at)+'</p></div></div>'+
         '<div class="q-facts">'+
           (q.phone?'<span dir="ltr">📞 '+esc(q.phone)+'</span>':"")+
