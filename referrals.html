@@ -162,6 +162,15 @@
     </div>
 
     <div class="card" style="margin-bottom:20px">
+      <h3 style="font-size:16px;margin-bottom:8px">📝 קישור לטופס הרשמה</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:10px">לשליחה למי שמעדיף/ה למלא בעצמו/ה (וואטסאפ, מייל וכו')</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="regFormLink" style="font-size:13px;word-break:break-all;color:var(--ink-soft)" dir="ltr"></span>
+        <button type="button" class="btn-line" id="copyRegFormBtn" style="width:auto;padding:8px 16px;font-size:13px">📋 העתקת קישור</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h3 style="font-size:16px">☎️ קווי סיוע</h3>
         <button class="btn-ghost" id="addHotlineBtn" style="font-size:13px">+ הוספה</button>
@@ -236,6 +245,13 @@
   ["logoutBtn0","logoutBtn1","logoutBtn2"].forEach(id=>$(id).onclick=()=>{YL.logout();location.reload()});
 
   // ═══ מידע לשיחה ═══
+  const regFormUrl = location.origin + location.pathname.replace(/[^/]*$/, '') + 'index.html';
+  $("regFormLink").textContent = regFormUrl;
+  $("copyRegFormBtn").onclick = function(){
+    navigator.clipboard.writeText(regFormUrl).then(()=>{
+      this.textContent="הועתק ✓"; setTimeout(()=>{this.textContent="📋 העתקת קישור";},1500);
+    }).catch(()=>alert("העתקה אוטומטית נכשלה. הקישור מוצג למעלה, ניתן להעתיק ידנית."));
+  };
   $("refreshInfoBtn").onclick=loadInfo;
   async function loadInfo(){
     loadHotlines();
