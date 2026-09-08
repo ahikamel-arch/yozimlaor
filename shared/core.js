@@ -187,17 +187,20 @@ const YL = (function(){
   }
 
   // ═══ תפריט ניווט משותף בין כל דפי הצוות ═══
-  function renderModuleNav(container, current, isAdminUser){
+  function renderModuleNav(container, current, roles){
+    roles = roles || [];
+    const isAdmin = roles.includes("מנהל/ת מערכת");
+    const has = r => isAdmin || roles.includes(r);
     const modules=[
-      {href:"referrals.html", label:"פניות"},
-      {href:"people.html", label:"כל האנשים", adminOnly:true},
-      {href:"activities.html", label:"פעילויות"},
-      {href:"content.html", label:"תוכן"},
-      {href:"tasks.html", label:"משימות ולוח שנה"},
-      {href:"community.html", label:"רשת קהילתית"}
+      {href:"referrals.html", label:"פניות", show: has("רכז/ת פניות")},
+      {href:"people.html", label:"כל האנשים", show: isAdmin},
+      {href:"activities.html", label:"פעילויות", show: has("רכז/ת קבוצות")},
+      {href:"content.html", label:"תוכן", show: has("רכז/ת תוכן")},
+      {href:"tasks.html", label:"משימות ולוח שנה", show: roles.length>0},
+      {href:"community.html", label:"רשת קהילתית", show: true}
     ];
     container.innerHTML = modules
-      .filter(m=>!m.adminOnly || isAdminUser)
+      .filter(m=>m.show)
       .map(m=>'<a href="'+m.href+'"'+(current===m.href?' class="active"':'')+'>'+m.label+'</a>').join('')
       + '<button type="button" onclick="YL.showMyCalendarLink()" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:10px 18px">📅 היומן שלי</button>';
     container.classList.remove("hidden");
@@ -222,13 +225,13 @@ const YL = (function(){
   function accessToken(){ return isLoggedIn() ? session.access_token : SUPABASE_KEY; }
 
   async function accountActivationStatus(){
-    const user = await getUser();
-    if(!user) return {ok:true}; // לא מחובר/ת בכלל - לא רלוונטי כאן
     try{
+      const user = await getUser();
+      if(!user) return {ok:true};
       const rows = await api("/persons?community_auth_user_id=eq."+user.id+"&select=account_activated");
-      if(!rows.length) return {ok:true}; // אין רשומת Person מקושרת - חשבון ישן/ידני, לא חוסמים
+      if(!rows.length) return {ok:true};
       return {ok: rows[0].account_activated===true};
-    }catch(e){ return {ok:true}; } // כשל בבדיקה - לא חוסמים בטעות, רק מתעדים
+    }catch(e){ return {ok:true}; }
   }
 
   return {
