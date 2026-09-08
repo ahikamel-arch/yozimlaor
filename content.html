@@ -159,7 +159,7 @@
     if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    YL.renderModuleNav($("moduleNav"), "content.html", roles.some(r=>r.role==="מנהל/ת מערכת"));
+    YL.renderModuleNav($("moduleNav"), "content.html", roles.map(r=>r.role));
     canAccess = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת תוכן");
     if(!canAccess){
       $("viewLock").classList.add("hidden");
