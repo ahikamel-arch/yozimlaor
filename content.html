@@ -162,6 +162,7 @@
     YL.renderModuleNav($("moduleNav"), "content.html", roles.map(r=>r.role));
     canAccess = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת תוכן");
     if(!canAccess){
+      if(roles.length===0){ location.href="community.html"; return; }
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
