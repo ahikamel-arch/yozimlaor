@@ -183,6 +183,7 @@
     const s = allSessions.find(x=>x.id===selectedSessionId);
     if(!s){ area.innerHTML=''; return; }
     area.innerHTML =
+      '<div style="text-align:left;margin-bottom:8px"><button type="button" class="del" id="deleteSessBtn" style="font-size:12px;padding:6px 10px">🗑 מחיקת המפגש הזה</button></div>'+
       '<div class="field" style="margin-top:6px;margin-bottom:6px"><label style="font-size:12px">משוב על המפגש</label>'+
         '<textarea rows="3" id="fbText">'+esc(s.facilitator_feedback||"")+'</textarea>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'+
@@ -191,6 +192,16 @@
         '</div></div>'+
       '<div style="margin-top:10px"><p style="font-size:12px;color:var(--mid);margin-bottom:6px">נוכחות</p>'+
         '<div id="attendArea"><p class="loading">טוען…</p></div></div>';
+
+    $("deleteSessBtn").onclick = async function(){
+      if(!confirm("למחוק את המפגש הזה (התאריך "+(s.session_date?fmtDate(s.session_date):"ללא תאריך")+")? כולל הנוכחות והמשוב שנרשמו בו. פעולה בלתי הפיכה.")) return;
+      this.disabled=true; this.textContent="מוחק…";
+      try{
+        await rpc("facilitator_delete_session",{p_token:token, p_session_id:s.id});
+        selectedSessionId = null;
+        await loadSessions();
+      }catch(e){ alert("המחיקה נכשלה"); this.disabled=false; this.textContent="🗑 מחיקת המפגש הזה"; }
+    };
 
     $("saveFbBtn").onclick = async function(){
       const btn=this, statusEl=$("fbStatus");
