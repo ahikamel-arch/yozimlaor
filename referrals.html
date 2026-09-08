@@ -212,38 +212,47 @@
   let isAdminUser=false;
 
   async function showApp(){
-    const user = await YL.getUser();
-    if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
-    const activation = await YL.accountActivationStatus();
-    if(!activation.ok){
+    try{
+      const user = await YL.getUser();
+      if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
+      const activation = await YL.accountActivationStatus();
+      if(!activation.ok){
+        $("viewLock").classList.add("hidden");
+        $("viewNoAccess").classList.add("hidden");
+        $("viewInitLoading").classList.add("hidden");
+        $("viewSetPass").classList.remove("hidden");
+        return;
+      }
+      let roles=[];
+      try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
+      isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
+      const allowed = isAdminUser || roles.some(r=>r.role==="רכז/ת פניות");
+      YL.renderModuleNav($("moduleNav"), "referrals.html", isAdminUser);
+      $("viewSetPass").classList.add("hidden");
+      if(!allowed){
+        $("viewLock").classList.add("hidden");
+        $("viewInitLoading").classList.add("hidden");
+        $("viewNoAccess").classList.remove("hidden");
+        return;
+      }
       $("viewLock").classList.add("hidden");
+      $("viewInitLoading").classList.add("hidden");
       $("viewNoAccess").classList.add("hidden");
+      $("mainNav").classList.remove("hidden");
+      $("queueDesc").textContent = isAdminUser
+        ? "פניות חדשות מהטופס + ארכיון היסטורי (מסומן בתג נפרד) - יש להשלים פרטים לפני אישור."
+        : "פניות חדשות שהגיעו מהטופס הציבורי. יש להשלים פרטים לפני אישור.";
+      document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=YL.whoami()||"");
+      showTab("queue");
+      loadQueue(); loadDash();
+    }catch(e){
+      console.error("showApp failed:", e);
       $("viewInitLoading").classList.add("hidden");
-      $("viewSetPass").classList.remove("hidden");
-      return;
+      $("viewMain").classList.add("hidden");
+      $("viewNoAccess").classList.add("hidden");
+      $("viewSetPass").classList.add("hidden");
+      $("viewLock").classList.remove("hidden");
     }
-    let roles=[];
-    try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
-    const allowed = isAdminUser || roles.some(r=>r.role==="רכז/ת פניות");
-    YL.renderModuleNav($("moduleNav"), "referrals.html", isAdminUser);
-    $("viewSetPass").classList.add("hidden");
-    if(!allowed){
-      $("viewLock").classList.add("hidden");
-      $("viewInitLoading").classList.add("hidden");
-      $("viewNoAccess").classList.remove("hidden");
-      return;
-    }
-    $("viewLock").classList.add("hidden");
-    $("viewInitLoading").classList.add("hidden");
-    $("viewNoAccess").classList.add("hidden");
-    $("mainNav").classList.remove("hidden");
-    $("queueDesc").textContent = isAdminUser
-      ? "פניות חדשות מהטופס + ארכיון היסטורי (מסומן בתג נפרד) - יש להשלים פרטים לפני אישור."
-      : "פניות חדשות שהגיעו מהטופס הציבורי. יש להשלים פרטים לפני אישור.";
-    document.querySelectorAll(".who1,.who2").forEach(el=>el.textContent=YL.whoami()||"");
-    showTab("queue");
-    loadQueue(); loadDash();
   }
   function showTab(name){
     $("tabQueue").classList.toggle("active",name==="queue");
@@ -928,7 +937,16 @@
         const r=referrals.find(x=>x.id===sel.dataset.id);
         const prev=r.status;
         r.status=sel.value;
-        try{ await api("/referrals?id=eq."+r.id,{method:"PATCH",body:JSON.stringify({status:sel.value})}); renderDash(); }
+        try{
+          await api("/referrals?id=eq."+r.id,{method:"PATCH",body:JSON.stringify({status:sel.value})});
+          renderDash();
+          if(sel.value==="בשיבוץ לקבוצה" && r.persons && r.persons.id){
+            selected.clear();
+            selected.set(r.id, r.persons.id);
+            updateBulkBar();
+            $("bulkAddExistingBtn").click();
+          }
+        }
         catch(e){ r.status=prev; renderDash(); alert("עדכון הסטטוס נכשל: "+e.message.slice(0,150)); }
       };
     });
