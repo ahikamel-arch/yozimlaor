@@ -199,6 +199,7 @@
     }
 
     if(!canManageActivities && !facilitatorOnly){
+      if(roles.length===0){ location.href="community.html"; return; }
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
