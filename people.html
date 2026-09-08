@@ -50,7 +50,7 @@
     <div class="card tiny">
       <div class="lock-icon">🚫</div>
       <h2 style="font-size:20px;margin-bottom:4px">אין לך הרשאה למודול זה</h2>
-      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">מסך זה דורש הרשאת מנהל/ת מערכת או רכז/ת פניות.</p>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:20px">מסך זה דורש הרשאת מנהל/ת מערכת.</p>
       <button class="btn-ghost" id="logoutBtn0">התנתקות</button>
     </div>
   </section>
@@ -102,12 +102,13 @@
   async function showApp(){
     const user = await YL.getUser();
     if(!user){ $("viewInitLoading").classList.add("hidden"); $("viewLock").classList.remove("hidden"); return; }
-    YL.renderModuleNav($("moduleNav"), "people.html");
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    const allowed = roles.some(r=>r.role==="מנהל/ת מערכת" || r.role==="רכז/ת פניות");
-    if(!allowed){
+    const isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
+    YL.renderModuleNav($("moduleNav"), "people.html", isAdminUser);
+    if(!isAdminUser){
       $("viewLock").classList.add("hidden");
+      $("viewInitLoading").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
       return;
     }
@@ -174,6 +175,35 @@
     }
   }
 
+  async function loadGroupsHistory(el){
+    const pid = el.dataset.groupsHistory;
+    try{
+      const rows = await api("/activity_members?person_id=eq."+pid+"&select=id,is_facilitator,activities(id,title,type,status,city,day_of_week)");
+      if(!rows.length){ el.innerHTML='<p style="font-size:13px;color:var(--ink-soft)">לא נמצא/ה בשום קבוצה.</p>'; return; }
+      el.innerHTML = rows.map(m=>{
+        const a=m.activities||{};
+        const sColor=a.status==="קיימת"?"#E0F0E3;color:#256B33":(a.status==="בהקמה"?"#FBF3E2;color:#8A6316":"#EEEEEE;color:#777");
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+          '<div>'+(m.is_facilitator?'⭐ ':'')+esc(a.title||"פעילות שנמחקה")+
+            (a.city?' · '+esc(a.city):'')+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            (a.status?'<span class="badge" style="background:'+sColor+';font-size:11px">'+esc(a.status)+'</span>':'')+
+            '<button type="button" data-remove-membership="'+m.id+'" style="border:none;background:none;color:var(--err);cursor:pointer;font-size:12px" title="הסרה מהקבוצה">✕</button>'+
+          '</div></div>';
+      }).join('');
+      el.querySelectorAll('[data-remove-membership]').forEach(b=>{
+        b.onclick=async ()=>{
+          if(!confirm("להסיר מהקבוצה הזו? (רק ההשתייכות - לא מוחק את האדם או את הקבוצה)")) return;
+          try{ await api("/activity_members?id=eq."+b.dataset.removeMembership,{method:"DELETE"}); loadGroupsHistory(el); }
+          catch(e){ alert("ההסרה נכשלה"); }
+        };
+      });
+    }catch(e){
+      el.innerHTML='<p style="font-size:13px;color:var(--err)">טעינה נכשלה - יש לוודא הרשאה למודול הפעילויות</p>';
+    }
+  }
+
   function render(){
     $("counter").textContent=people.length+" איש/ה"+(people.length===200?" (מוצגים 200 ראשונים - חפשו כדי לצמצם)":"");
     const area=$("listArea");
@@ -214,6 +244,7 @@
             (p.region_hint?'<p><b>אזור:</b> '+esc(p.region_hint)+'</p>':"")+
             '<p><b>מקור:</b> '+esc(p.source||"—")+'</p>'+
             '<p><b>סטטוס קהילה:</b> '+esc(p.community_status||"לא קהילה")+'</p>'+
+            '<div style="margin-top:8px"><b>קבוצות (עבר והווה):</b><div data-groups-history="'+p.id+'" style="margin-top:4px"><p style="font-size:13px;color:var(--ink-soft)">טוען…</p></div></div>'+
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
               '<button type="button" class="btn-ghost" data-edit="'+p.id+'">✏ עריכה</button>'+
               '<button type="button" class="btn-line" data-add-referral="'+p.id+'" style="width:auto;padding:8px 16px;font-size:13px">➕ יצירת פנייה</button>'+
@@ -241,6 +272,7 @@
         }catch(e){ alert("היצירה נכשלה: "+e.message.slice(0,200)); }
       };
     });
+    area.querySelectorAll("[data-groups-history]").forEach(el=>loadGroupsHistory(el));
     area.querySelectorAll("[data-toggle-group]").forEach(btn=>{
       btn.onclick=async (e)=>{
         e.stopPropagation();
