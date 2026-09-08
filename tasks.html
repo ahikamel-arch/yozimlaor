@@ -186,7 +186,7 @@
     myName = YL.whoami()||"";
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
-    YL.renderModuleNav($("moduleNav"), "tasks.html", roles.some(r=>r.role==="מנהל/ת מערכת"));
+    YL.renderModuleNav($("moduleNav"), "tasks.html", roles.map(r=>r.role));
     if(!roles.length){
       $("viewLock").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
