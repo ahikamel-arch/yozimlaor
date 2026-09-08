@@ -43,7 +43,10 @@
     </div>
 
     <div class="card">
-      <h2 style="font-size:17px;margin-bottom:12px">מפגשים</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="font-size:17px">מפגשים</h2>
+        <button type="button" class="btn-ghost" id="exportBtn" style="font-size:12px">📊 ייצוא לאקסל</button>
+      </div>
       <div class="field" style="margin-bottom:16px">
         <label>בחירת תאריך מפגש</label>
         <select id="sessSelect"><option value="">טוען…</option></select>
@@ -114,6 +117,32 @@
 
   let allSessions = [];
   let selectedSessionId = null;
+
+  $("exportBtn").onclick = async function(){
+    if(!allSessions.length){ alert("אין עדיין מפגשים לייצוא"); return; }
+    this.disabled=true; this.textContent="מכין קובץ…";
+    try{
+      const rowsPerSession = await Promise.all(allSessions.map(async s=>{
+        const current = await rpc("facilitator_get_attendance",{p_token:token, p_session_id:s.id}).catch(()=>[]);
+        const presentIds = new Set((current||[]).map(c=>c.person_id));
+        const names = roster.filter(m=>presentIds.has(m.person_id)).map(m=>(m.first_name||"")+" "+(m.last_name||"")).join(", ");
+        return {
+          date: s.session_date ? fmtDate(s.session_date) : "ללא תאריך",
+          present: names || "—",
+          count: presentIds.size,
+          feedback: s.facilitator_feedback || ""
+        };
+      }));
+      const head = ["תאריך","נוכחים","כמות נוכחים","משוב"];
+      const csv = "\uFEFF" + [head].concat(rowsPerSession.map(r=>[r.date,r.present,r.count,r.feedback]))
+        .map(row => row.map(v => '"' + String(v==null?"":v).replace(/"/g,'""') + '"').join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+      const a = document.createElement("a");
+      a.href = url; a.download = "דיווח-מפגשים.csv"; a.click();
+      URL.revokeObjectURL(url);
+    }catch(e){ alert("הייצוא נכשל, נסה/י שוב"); }
+    this.disabled=false; this.textContent="📊 ייצוא לאקסל";
+  };
 
   async function loadSessions(){
     $("sessSelect").innerHTML = '<option value="">טוען…</option>';
