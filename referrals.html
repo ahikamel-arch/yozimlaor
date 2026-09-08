@@ -228,7 +228,7 @@
       try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
       isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
       const allowed = isAdminUser || roles.some(r=>r.role==="רכז/ת פניות");
-      YL.renderModuleNav($("moduleNav"), "referrals.html", isAdminUser);
+      YL.renderModuleNav($("moduleNav"), "referrals.html", roles.map(r=>r.role));
       $("viewSetPass").classList.add("hidden");
       if(!allowed){
         $("viewLock").classList.add("hidden");
