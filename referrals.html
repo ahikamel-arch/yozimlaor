@@ -231,6 +231,7 @@
       YL.renderModuleNav($("moduleNav"), "referrals.html", roles.map(r=>r.role));
       $("viewSetPass").classList.add("hidden");
       if(!allowed){
+        if(roles.length===0){ location.href="community.html"; return; }
         $("viewLock").classList.add("hidden");
         $("viewInitLoading").classList.add("hidden");
         $("viewNoAccess").classList.remove("hidden");
