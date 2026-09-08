@@ -2058,16 +2058,25 @@ async function submitSetPassword(){
 }
 
 // בדיקה בטעינת הדף - האם הגענו מקישור הזמנה/איפוס (טוקנים ב-hash של ה-URL)
-(async function checkInviteRedirect(){
+(async function boot(){
   const hash = location.hash.startsWith('#') ? location.hash.slice(1) : '';
-  if(!hash) return;
-  const hp = new URLSearchParams(hash);
-  const at = hp.get('access_token'), rt = hp.get('refresh_token');
-  if(at && rt){
-    history.replaceState(null, '', location.pathname + location.search); // מנקים את הטוקנים מה-URL הגלוי
-    await YL.setSessionFromTokens(at, rt);
-    document.querySelectorAll('.screen.active').forEach(s=>s.classList.remove('active'));
-    document.getElementById('screen-setpass').classList.add('active');
+  if(hash){
+    const hp = new URLSearchParams(hash);
+    const at = hp.get('access_token'), rt = hp.get('refresh_token');
+    if(at && rt){
+      history.replaceState(null, '', location.pathname + location.search); // מנקים את הטוקנים מה-URL הגלוי
+      await YL.setSessionFromTokens(at, rt);
+      document.querySelectorAll('.screen.active').forEach(s=>s.classList.remove('active'));
+      document.getElementById('screen-setpass').classList.add('active');
+      return;
+    }
+  }
+  // כבר מחובר/ת (למשל הגיע/ה מדף צוות אחר עם אותו חשבון) - נכנסים ישר, בלי מסך כניסה נוסף
+  if(YL.isLoggedIn()){
+    try{
+      const ok = await YL.refreshSession();
+      if(ok){ await afterCommunityAuth(); return; }
+    }catch(e){}
   }
 })();
 
