@@ -1360,6 +1360,7 @@
   <div class="top-bar">
     <div class="top-logo">יוצ<em>א</em>ים לאור</div>
     <div class="top-right">
+      <a id="staff-return-btn" href="referrals.html" style="display:none;text-decoration:none;background:var(--sage-soft,rgba(139,168,136,0.15));color:var(--sage-dark);border-radius:16px;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap">🛠 מסוף ניהול</a>
       <div class="notif-btn">🔔<div class="notif-dot"></div></div>
       <button class="avatar-sm" onclick="switchTab('profile')">מ</button>
     </div>
@@ -2006,7 +2007,16 @@ async function afterCommunityAuth(){
     updateProfileDisplay();
     updateComposeAvatars();
     await loadFeed();
+    checkStaffReturnButton();
   }
+}
+
+async function checkStaffReturnButton(){
+  try{
+    const user = await YL.getUser();
+    const roles = await YL.api("/staff_roles?auth_user_id=eq."+user.id+"&select=role");
+    if(roles && roles.length) document.getElementById('staff-return-btn').style.display='inline-block';
+  }catch(e){}
 }
 
 async function communityLogin(){
@@ -2729,6 +2739,7 @@ async function submitSetup() {
   updateProfileDisplay();
   updateComposeAvatars();
   await loadFeed();
+  checkStaffReturnButton();
 }
 
 // ============ STORY EDIT ============
