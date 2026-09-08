@@ -106,8 +106,9 @@
     let roles=[];
     try{ roles = await api("/staff_roles?auth_user_id=eq."+user.id+"&select=role"); }catch(e){ roles=[]; }
     const isAdminUser = roles.some(r=>r.role==="מנהל/ת מערכת");
-    YL.renderModuleNav($("moduleNav"), "people.html", isAdminUser);
+    YL.renderModuleNav($("moduleNav"), "people.html", roles.map(r=>r.role));
     if(!isAdminUser){
+      if(roles.length===0){ location.href="community.html"; return; }
       $("viewLock").classList.add("hidden");
       $("viewInitLoading").classList.add("hidden");
       $("viewNoAccess").classList.remove("hidden");
