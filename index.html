@@ -100,29 +100,20 @@
 
     <div class="field"><label>מגדר</label><div class="pills" id="genderPills"></div></div>
 
-    <div class="field" id="f-group">
-      <label>איזו קבוצה מחפש/ת?</label>
-      <div class="pills" id="groupPills"></div>
-      <button type="button" class="pill mixed-pill" id="mixedPill" style="margin-top:8px">+ מתאימה גם קבוצה מעורבת</button>
+    <div class="field">
+      <label>שנת לידה</label>
+      <select id="birthYear"><option value="">בחירה…</option></select>
     </div>
 
-    <div class="field" id="f-region">
-      <label>אזורים מבוקשים (אפשר לבחור כמה)</label>
-      <div class="pills" id="regionPills"></div>
+    <div class="field">
+      <label>אזור מגורים</label>
+      <input id="region" placeholder="למשל: חיפה, או ירושלים והסביבה">
     </div>
 
-    <div class="row2">
-      <div class="field">
-        <label>עיר ספציפית (אם רלוונטי)</label>
-        <input id="city" placeholder="למשל: חיפה">
-      </div>
-      <div class="field">
-        <label>גיל (משוער)</label>
-        <input id="age" placeholder="למשל: 34" inputmode="numeric">
-      </div>
+    <div class="field" id="f-interests">
+      <label>מתעניינ/ת ב... (אפשר לבחור כמה)</label>
+      <div class="pills" id="interestPills"></div>
     </div>
-
-    <div class="field"><label>מגזר</label><div class="pills" id="sectorPills"></div></div>
 
     <div class="field">
       <label>רוצה להוסיף משהו?</label>
@@ -151,15 +142,13 @@
   const SUPABASE_URL = "https://hvnyhtbmrniuqicdtfsg.supabase.co";
   const SUPABASE_KEY = "sb_publishable_y9ZmwLpDGgrBN6M7XQLAcQ_j6_PUh-C";
 
-  const REGIONS=["צפון","חיפה והקריות","שרון","מרכז","תל אביב","ירושלים והסביבה","שפלה","דרום"];
-  const GROUPS=["גברים","נשים","מעגל שני - הורים","מעגל שני - בני זוג"];
   const GENDERS=["אישה","גבר","אחר / מעדיפ.ה לא לציין"];
-  const SECTORS=["חילוני","מסורתי","דתי","חרדי","ערבי","אחר"];
+  const INTERESTS=["קבוצה","מפגשי קהילה","קורס מנחים","השתתפות בפודקאסט","קורס הכשרת מרצים","השתתפות בכנס השנתי"];
 
   function $(id){return document.getElementById(id)}
 
-  let mixed=false, gender=null, group=null, sector=null;
-  const regions=new Set();
+  let gender=null;
+  const interests=new Set();
 
   function renderPills(container,list,selected,onSelect,multi){
     const el=$(container); el.innerHTML="";
@@ -174,13 +163,20 @@
   }
   function draw(){
     renderPills("genderPills",GENDERS,gender,v=>{gender=(gender===v?null:v);draw()},false);
-    renderPills("groupPills",GROUPS,group,v=>{group=(group===v?null:v);draw()},false);
-    renderPills("regionPills",REGIONS,regions,v=>{regions.has(v)?regions.delete(v):regions.add(v);draw()},true);
-    renderPills("sectorPills",SECTORS,sector,v=>{sector=(sector===v?null:v);draw()},false);
-    $("mixedPill").classList.toggle("on",mixed);
+    renderPills("interestPills",INTERESTS,interests,v=>{interests.has(v)?interests.delete(v):interests.add(v);draw()},true);
   }
-  $("mixedPill").onclick=()=>{mixed=!mixed;draw()};
   draw();
+
+  // מילוי רשימת שנות לידה - מהקרובה להרחוקה
+  (function fillYears(){
+    const sel=$("birthYear");
+    const thisYear=new Date().getFullYear();
+    for(let y=thisYear-14; y>=thisYear-100; y--){
+      const opt=document.createElement("option");
+      opt.value=y; opt.textContent=y;
+      sel.appendChild(opt);
+    }
+  })();
 
   function showErr(fieldId,msg){
     const f=$(fieldId); f.classList.add("invalid");
@@ -214,10 +210,10 @@
 
     const payload={
       first_name:name, last_name:"", phone:phone||null, email:email||null,
-      gender:gender, group_type_requested:group, mixed_ok:mixed,
-      regions:Array.from(regions), city:$("city").value.trim()||null,
-      age:$("age").value?parseInt($("age").value,10):null,
-      sector:sector, notes:$("notes").value.trim()||null,
+      gender:gender, birth_year:$("birthYear").value?parseInt($("birthYear").value,10):null,
+      regions:$("region").value.trim()?[$("region").value.trim()]:null,
+      interests:interests.size?Array.from(interests):null,
+      notes:$("notes").value.trim()||null,
       consent_given:true
     };
 
