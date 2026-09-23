@@ -445,6 +445,7 @@
           (q.email?'<span dir="ltr">✉ '+esc(q.email)+'</span>':"")+
           (q.gender?'<span>'+esc(q.gender)+'</span>':"")+
           (q.birth_year?'<span>נולד/ה ב-'+esc(q.birth_year)+'</span>':"")+
+          (q.regions&&q.regions.length?'<span>אזור: '+esc(q.regions.join(', '))+'</span>':"")+
           (q.group_type_requested?'<span>מבקש/ת: '+esc(q.group_type_requested)+'</span>':"")+
           (q.city?'<span>עיר: '+esc(q.city)+'</span>':"")+
           (q.age?'<span>גיל: '+esc(q.age)+'</span>':"")+
@@ -452,7 +453,6 @@
         '</div>'+
         (q.interests&&q.interests.length?'<p style="font-size:13px;margin-top:6px"><b>מתעניינ/ת ב:</b> '+esc(q.interests.join(', '))+'</p>':"")+
         (q.notes?'<div class="q-notes">'+esc(q.notes)+'</div>':"")+
-        '<div class="field" style="margin-bottom:12px"><label>אזור מגורים</label><input data-field="regionText" data-id="'+q.id+'" value="'+esc(Array.from(d.regions)[0]||"")+'" placeholder="למשל: חיפה, או ירושלים והסביבה"></div>'+
         '<div class="field" style="margin-bottom:12px"><label>הערת מעקב (מתווספת לפנייה)</label><textarea rows="2" data-field="notes" data-id="'+q.id+'" placeholder="מה עלה בשיחה, דגשים לרכזים…">'+esc(d.notes)+'</textarea></div>'+
         '<div class="row2" style="margin-bottom:12px">'+
           '<div class="field"><label>סטטוס התחלתי</label><select data-field="status" data-id="'+q.id+'">'+
@@ -471,12 +471,7 @@
     area.querySelectorAll('[data-field]').forEach(el=>{
       el.oninput=el.onchange=function(){
         const id=this.dataset.id, field=this.dataset.field;
-        if(field==="regionText"){
-          const v=this.value.trim();
-          queueDraft[id].regions = new Set(v?[v]:[]);
-        }else{
-          queueDraft[id][field]=this.value;
-        }
+        queueDraft[id][field]=this.value;
       };
     });
     area.querySelectorAll('[data-approve]').forEach(b=>{
@@ -758,9 +753,7 @@
               '<div></div>'+
             '</div>'+
             '<div class="field"><label><input type="checkbox" data-e="mixed_ok" style="width:auto" '+(r.mixed_ok?'checked':'')+'> מתאימה גם קבוצה מעורבת</label></div>'+
-            '<div class="field"><label>אזורים</label><div class="pills" data-e-regions>'+
-              REGIONS.map(rg=>'<button type="button" class="pill'+(rgns.has(rg)?' on':'')+'" data-region-pill="'+esc(rg)+'">'+esc(rg)+'</button>').join('')+
-            '</div></div>'+
+            '<div class="field"><label>אזור מגורים</label><input data-e="region_single" value="'+esc((r.regions&&r.regions[0])||"")+'" placeholder="למשל: חיפה, או ירושלים והסביבה"></div>'+
             '<div class="row2">'+
               '<div class="field"><label>עיר</label><input data-e="city" value="'+esc(r.city||"")+'"></div>'+
               '<div class="field"><label>גיל</label><input data-e="age" value="'+esc(r.age||"")+'" inputmode="numeric"></div>'+
@@ -823,14 +816,6 @@
     area.querySelectorAll("[data-cancel-edit]").forEach(btn=>{
       btn.onclick=(e)=>{ e.stopPropagation(); editingId=null; renderDash(); };
     });
-    area.querySelectorAll("[data-region-pill]").forEach(btn=>{
-      btn.onclick=(e)=>{
-        e.stopPropagation();
-        const rg=btn.dataset.regionPill;
-        if(editRegionsSet.has(rg)) editRegionsSet.delete(rg); else editRegionsSet.add(rg);
-        btn.classList.toggle("on");
-      };
-    });
     area.querySelectorAll("[data-save-edit]").forEach(btn=>{
       btn.onclick=async (e)=>{
         e.stopPropagation();
@@ -855,7 +840,7 @@
             gender: wrap.querySelector('[data-e="gender"]').value||null,
             sector: wrap.querySelector('[data-e="sector"]').value||null,
             mixed_ok: checked("mixed_ok"),
-            regions: Array.from(editRegionsSet),
+            regions: val("region_single")?[val("region_single")]:null,
             city: val("city")||null,
             age: val("age")?parseInt(val("age"),10):null,
             birth_year: val("birth_year")?parseInt(val("birth_year"),10):null,
