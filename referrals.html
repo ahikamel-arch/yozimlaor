@@ -444,13 +444,15 @@
           (q.phone?'<span dir="ltr">📞 '+esc(q.phone)+'</span>':"")+
           (q.email?'<span dir="ltr">✉ '+esc(q.email)+'</span>':"")+
           (q.gender?'<span>'+esc(q.gender)+'</span>':"")+
+          (q.birth_year?'<span>נולד/ה ב-'+esc(q.birth_year)+'</span>':"")+
           (q.group_type_requested?'<span>מבקש/ת: '+esc(q.group_type_requested)+'</span>':"")+
           (q.city?'<span>עיר: '+esc(q.city)+'</span>':"")+
           (q.age?'<span>גיל: '+esc(q.age)+'</span>':"")+
           (q.sector?'<span>'+esc(q.sector)+'</span>':"")+
         '</div>'+
+        (q.interests&&q.interests.length?'<p style="font-size:13px;margin-top:6px"><b>מתעניינ/ת ב:</b> '+esc(q.interests.join(', '))+'</p>':"")+
         (q.notes?'<div class="q-notes">'+esc(q.notes)+'</div>':"")+
-        '<div class="field" style="margin-bottom:12px"><label>אזורים (אפשר לתקן/להוסיף)</label><div class="pills" data-region-pills="'+q.id+'"></div></div>'+
+        '<div class="field" style="margin-bottom:12px"><label>אזור מגורים</label><input data-field="regionText" data-id="'+q.id+'" value="'+esc(Array.from(d.regions)[0]||"")+'" placeholder="למשל: חיפה, או ירושלים והסביבה"></div>'+
         '<div class="field" style="margin-bottom:12px"><label>הערת מעקב (מתווספת לפנייה)</label><textarea rows="2" data-field="notes" data-id="'+q.id+'" placeholder="מה עלה בשיחה, דגשים לרכזים…">'+esc(d.notes)+'</textarea></div>'+
         '<div class="row2" style="margin-bottom:12px">'+
           '<div class="field"><label>סטטוס התחלתי</label><select data-field="status" data-id="'+q.id+'">'+
@@ -466,23 +468,15 @@
     });
     area.innerHTML=html;
 
-    // ציורי פילס אזור
-    queue.forEach(q=>{
-      const el=document.querySelector('[data-region-pills="'+q.id+'"]');
-      const d=queueDraft[q.id];
-      el.innerHTML="";
-      REGIONS.forEach(r=>{
-        const b=document.createElement("button");
-        b.type="button"; b.className="pill"+(d.regions.has(r)?" on":""); b.textContent=r;
-        b.onclick=()=>{ d.regions.has(r)?d.regions.delete(r):d.regions.add(r); renderQueue(); };
-        el.appendChild(b);
-      });
-    });
-
     area.querySelectorAll('[data-field]').forEach(el=>{
       el.oninput=el.onchange=function(){
         const id=this.dataset.id, field=this.dataset.field;
-        queueDraft[id][field]=this.value;
+        if(field==="regionText"){
+          const v=this.value.trim();
+          queueDraft[id].regions = new Set(v?[v]:[]);
+        }else{
+          queueDraft[id][field]=this.value;
+        }
       };
     });
     area.querySelectorAll('[data-approve]').forEach(b=>{
@@ -531,6 +525,7 @@
         person_id:personId, status:d.status,
         group_type_requested:sub.group_type_requested, mixed_ok:!!sub.mixed_ok,
         regions:Array.from(d.regions), city:sub.city, age:sub.age, sector:sub.sector,
+        birth_year:sub.birth_year||null, interests:sub.interests||null,
         notes:d.notes||null, intake_volunteer:d.volunteer.trim()
       })});
       // 5. עדכון תור המיון
@@ -770,6 +765,10 @@
               '<div class="field"><label>עיר</label><input data-e="city" value="'+esc(r.city||"")+'"></div>'+
               '<div class="field"><label>גיל</label><input data-e="age" value="'+esc(r.age||"")+'" inputmode="numeric"></div>'+
             '</div>'+
+            '<div class="row2">'+
+              '<div class="field"><label>שנת לידה</label><input data-e="birth_year" value="'+esc(r.birth_year||"")+'" inputmode="numeric"></div>'+
+              '<div class="field"><label>מתעניינ/ת ב (מופרד בפסיקים)</label><input data-e="interests" value="'+esc((r.interests||[]).join(", "))+'"></div>'+
+            '</div>'+
             '<div class="field"><label>הערות</label><textarea data-e="notes" rows="3">'+esc(r.notes||"")+'</textarea></div>'+
             '<div style="display:flex;gap:8px;margin-bottom:12px">'+
               '<button type="button" class="btn-line" data-save-edit="'+r.id+'" style="width:auto;padding:8px 20px">💾 שמירה</button>'+
@@ -779,9 +778,11 @@
           html +=
             (p.email?'<p><b>מייל:</b> '+esc(p.email)+'</p>':"")+
             (r.gender?'<p><b>מגדר:</b> '+esc(r.gender)+'</p>':"")+
+            (r.birth_year?'<p><b>שנת לידה:</b> '+esc(r.birth_year)+'</p>':"")+
             (r.city?'<p><b>עיר:</b> '+esc(r.city)+'</p>':"")+
             (r.age?'<p><b>גיל:</b> '+esc(r.age)+'</p>':"")+
             (r.sector?'<p><b>מגזר:</b> '+esc(r.sector)+'</p>':"")+
+            (r.interests&&r.interests.length?'<p><b>מתעניינ/ת ב:</b> '+esc(r.interests.join(', '))+'</p>':"")+
             (r.notes?'<p><b>הערות:</b> '+esc(r.notes)+'</p>':"")+
             '<button type="button" class="btn-ghost" data-edit-row="'+r.id+'" style="margin-top:8px">✏ עריכת פרטים</button>';
         }
@@ -857,6 +858,8 @@
             regions: Array.from(editRegionsSet),
             city: val("city")||null,
             age: val("age")?parseInt(val("age"),10):null,
+            birth_year: val("birth_year")?parseInt(val("birth_year"),10):null,
+            interests: val("interests")?val("interests").split(",").map(s=>s.trim()).filter(Boolean):null,
             notes: val("notes")||null
           })});
           editingId=null;
